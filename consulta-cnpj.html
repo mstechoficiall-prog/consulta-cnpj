@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Consulta CNPJ e Grau de Risco NR 04</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18212f;
+      --muted: #607086;
+      --line: #d8e1ea;
+      --bg: #f4f7f8;
+      --panel: #ffffff;
+      --teal: #087f8c;
+      --teal-dark: #05616b;
+      --gold: #b87912;
+      --rose: #b33b45;
+      --green: #27734f;
+      --blue: #315e9b;
+      --shadow: 0 18px 45px rgba(24, 33, 47, .11);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(8, 127, 140, .10), transparent 38%),
+        linear-gradient(315deg, rgba(184, 121, 18, .10), transparent 36%),
+        var(--bg);
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.25rem, 2.4vw, 2rem);
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .source {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .source a {
+      color: var(--teal-dark);
+      font-weight: 700;
+      text-decoration-thickness: 1px;
+    }
+
+    .status-pill {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.74);
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: rgba(255,255,255,.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .search-panel {
+      padding: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: .86rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    input {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #b9c6d3;
+      border-radius: 8px;
+      padding: 0 14px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 4px rgba(8, 127, 140, .14);
+    }
+
+    button {
+      min-height: 48px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 18px;
+      background: var(--teal);
+      color: #fff;
+      font-size: .96rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s ease, transform .15s ease;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: var(--teal-dark);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button[disabled] {
+      cursor: wait;
+      opacity: .68;
+    }
+
+    .manual {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .manual-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.45;
+    }
+
+    .result {
+      margin-top: 18px;
+      overflow: hidden;
+    }
+
+    .result-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .company-name {
+      margin: 0;
+      font-size: 1.18rem;
+      line-height: 1.25;
+    }
+
+    .company-meta {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.45;
+    }
+
+    .risk-badge {
+      width: 86px;
+      min-height: 86px;
+      flex: 0 0 86px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .risk-badge span {
+      display: block;
+      font-size: .7rem;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+
+    .risk-badge strong {
+      display: block;
+      font-size: 2.1rem;
+      line-height: 1;
+      margin-top: 4px;
+    }
+
+    .risk-1 { background: var(--green); }
+    .risk-2 { background: var(--blue); }
+    .risk-3 { background: var(--gold); }
+    .risk-4 { background: var(--rose); }
+
+    .details {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .detail {
+      min-height: 96px;
+      padding: 16px 18px;
+      background: #fff;
+    }
+
+    .detail.full {
+      grid-column: 1 / -1;
+    }
+
+    .detail b {
+      display: block;
+      color: var(--muted);
+      font-size: .78rem;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0;
+    }
+
+    .detail span {
+      display: block;
+      overflow-wrap: anywhere;
+      line-height: 1.42;
+    }
+
+    .side {
+      padding: 18px;
+    }
+
+    .side h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+    }
+
+    .mini-stat {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .mini-stat:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .mini-num {
+      min-height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .mini-stat p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.35;
+    }
+
+    .alert {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #f0c36a;
+      background: #fff8e8;
+      color: #6f4b0d;
+      line-height: 1.45;
+      font-size: .92rem;
+    }
+
+    .error {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid #f0a7ad;
+      background: #fff1f2;
+      color: #84252e;
+      line-height: 1.45;
+      font-size: .92rem;
+    }
+
+    .empty {
+      margin-top: 18px;
+      padding: 28px 20px;
+      border: 1px dashed #b9c6d3;
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255,255,255,.62);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        width: min(100% - 24px, 680px);
+        padding-top: 18px;
+      }
+
+      .topbar,
+      .result-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .status-pill {
+        align-self: flex-start;
+      }
+
+      .form-grid,
+      .manual-grid,
+      .details {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .risk-badge {
+        width: 100%;
+        min-height: 76px;
+        grid-template-columns: auto auto;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      .risk-badge strong {
+        margin-top: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">NR</div>
+        <div>
+          <h1>Consulta CNPJ e Grau de Risco NR 04</h1>
+          <p class="source">Base local: <a href="https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/participacao-social/conselhos-e-orgaos-colegiados/comissao-tripartite-partitaria-permanente/arquivos/normas-regulamentadoras/nr-04.pdf/@@download/file" target="_blank" rel="noreferrer">Quadro I da NR 4 no gov.br</a></p>
+        </div>
+      </div>
+      <div class="status-pill"><span class="dot"></span><span id="baseStatus">673 CNAEs carregados</span></div>
+    </header>
+
+    <section class="layout">
+      <div>
+        <section class="panel search-panel" aria-label="Consulta por CNPJ">
+          <form id="cnpjForm" class="form-grid">
+            <div>
+              <label for="cnpjInput">CNPJ</label>
+              <input id="cnpjInput" name="cnpj" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" maxlength="18" required>
+            </div>
+            <button id="searchButton" type="submit">Consultar</button>
+          </form>
+          <p class="hint">A busca usa a BrasilAPI para obter o CNAE principal cadastrado no CNPJ. O grau de risco é consultado na tabela local extraída do Quadro I da NR 4.</p>
+
+          <div class="manual">
+            <form id="cnaeForm" class="manual-grid">
+              <div>
+                <label for="cnaeInput">Consultar direto pelo CNAE</label>
+                <input id="cnaeInput" name="cnae" inputmode="numeric" autocomplete="off" placeholder="Ex.: 6201-5/01 ou 62.01-5" maxlength="10">
+              </div>
+              <button type="submit">Buscar CNAE</button>
+            </form>
+          </div>
+          <div id="message" aria-live="polite"></div>
+        </section>
+
+        <section id="result" class="panel result" hidden></section>
+        <section id="empty" class="empty">Digite um CNPJ para localizar automaticamente o CNAE principal, a descrição da atividade e o grau de risco correspondente.</section>
+      </div>
+
+      <aside class="panel side" aria-label="Resumo da escala">
+        <h2>Escala de Grau de Risco</h2>
+        <div class="mini-stat"><div class="mini-num risk-1">1</div><p>Baixa gradação de risco para fins de dimensionamento do SESMT.</p></div>
+        <div class="mini-stat"><div class="mini-num risk-2">2</div><p>Risco intermediário menor, conforme o enquadramento do Quadro I.</p></div>
+        <div class="mini-stat"><div class="mini-num risk-3">3</div><p>Risco intermediário maior, comum em diversas atividades industriais e de serviços.</p></div>
+        <div class="mini-stat"><div class="mini-num risk-4">4</div><p>Maior grau previsto no Quadro I da NR 4.</p></div>
+        <div class="alert">Use o resultado como apoio operacional. Para decisões formais de SESMT, confira a atividade principal, estabelecimentos e exceções aplicáveis na NR 4.</div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const NR04_DATA = [{"code":"01.11-3","description":"Cultivo de cereais","risk":3},{"code":"01.12-1","description":"Cultivo de algodão herbáceo e de outras fibras de lavoura temporária","risk":3},{"code":"01.13-0","description":"Cultivo de cana-de-açúcar","risk":3},{"code":"01.14-8","description":"Cultivo de fumo","risk":3},{"code":"01.15-6","description":"Cultivo de soja","risk":3},{"code":"01.16-4","description":"Cultivo de oleaginosas de lavoura temporária, exceto soja","risk":3},{"code":"01.19-9","description":"Cultivo de plantas de lavoura temporária não especificadas anteriormente","risk":3},{"code":"01.21-1","description":"Horticultura","risk":3},{"code":"01.22-9","description":"Cultivo de flores e plantas ornamentais","risk":3},{"code":"01.31-8","description":"Cultivo de laranja","risk":3},{"code":"01.32-6","description":"Cultivo de uva","risk":3},{"code":"01.33-4","description":"Cultivo de frutas de lavoura permanente, exceto laranja e uva","risk":3},{"code":"01.34-2","description":"Cultivo de café","risk":3},{"code":"01.35-1","description":"Cultivo de cacau","risk":3},{"code":"01.39-3","description":"Cultivo de plantas de lavoura permanente não especificadas anteriormente","risk":3},{"code":"01.41-5","description":"Produção de sementes certificadas","risk":3},{"code":"01.42-3","description":"Produção de mudas e outras formas de propagação vegetal, certificadas","risk":3},{"code":"01.51-2","description":"Criação de bovinos","risk":3},{"code":"01.52-1","description":"Criação de outros animais de grande porte","risk":3},{"code":"01.53-9","description":"Criação de caprinos e ovinos","risk":3},{"code":"01.54-7","description":"Criação de suínos","risk":3},{"code":"01.55-5","description":"Criação de aves","risk":3},{"code":"01.59-8","description":"Criação de animais não especificados anteriormente","risk":3},{"code":"01.61-0","description":"Atividades de apoio à agricultura","risk":3},{"code":"01.62-8","description":"Atividades de apoio à pecuária","risk":3},{"code":"01.63-6","description":"Atividades de pós-colheita","risk":3},{"code":"01.70-9","description":"Caça e serviços relacionados","risk":3},{"code":"02.10-1","description":"Produção florestal - florestas plantadas","risk":3},{"code":"02.20-9","description":"Produção florestal - florestas nativas","risk":4},{"code":"02.30-6","description":"Atividades de apoio à produção florestal","risk":3},{"code":"03.11-6","description":"Pesca em água salgada","risk":3},{"code":"03.12-4","description":"Pesca em água doce","risk":3},{"code":"03.21-3","description":"Aqüicultura em água salgada e salobra","risk":3},{"code":"03.22-1","description":"Aqüicultura em água doce","risk":3},{"code":"05.00-3","description":"Extração de carvão mineral","risk":4},{"code":"06.00-0","description":"Extração de petróleo e gás natural","risk":4},{"code":"07.10-3","description":"Extração de minério de ferro","risk":4},{"code":"07.21-9","description":"Extração de minério de alumínio","risk":4},{"code":"07.22-7","description":"Extração de minério de estanho","risk":4},{"code":"07.23-5","description":"Extração de minério de manganês","risk":4},{"code":"07.24-3","description":"Extração de minério de metais preciosos","risk":4},{"code":"07.25-1","description":"Extração de minerais radioativos","risk":4},{"code":"07.29-4","description":"Extração de minerais metálicos não-ferrosos não especificados anteriormente","risk":4},{"code":"08.10-0","description":"Extração de pedra, areia e argila","risk":4},{"code":"08.91-6","description":"Extração de minerais para fabricação de adubos, fertilizantes e outros produtos químicos","risk":4},{"code":"08.92-4","description":"Extração e refino de sal marinho e sal-gema","risk":4},{"code":"08.93-2","description":"Extração de gemas (pedras preciosas e semipreciosas)","risk":4},{"code":"08.99-1","description":"Extração de minerais não-metálicos não especificados anteriormente","risk":4},{"code":"09.10-6","description":"Atividades de apoio à extração de petróleo e gás natural","risk":4},{"code":"09.90-4","description":"Atividades de apoio à extração de minerais, exceto petróleo e gás natural","risk":4},{"code":"10.11-2","description":"Abate de reses, exceto suínos","risk":3},{"code":"10.12-1","description":"Abate de suínos, aves e outros pequenos animais","risk":3},{"code":"10.13-9","description":"Fabricação de produtos de carne","risk":3},{"code":"10.20-1","description":"Preservação do pescado e fabricação de produtos do pescado","risk":3},{"code":"10.31-7","description":"Fabricação de conservas de frutas","risk":3},{"code":"10.32-5","description":"Fabricação de conservas de legumes e outros vegetais","risk":3},{"code":"10.33-3","description":"Fabricação de sucos de frutas, hortaliças e legumes","risk":3},{"code":"10.41-4","description":"Fabricação de óleos vegetais em bruto, exceto óleo de milho","risk":3},{"code":"10.42-2","description":"Fabricação de óleos vegetais refinados, exceto óleo de milho","risk":3},{"code":"10.43-1","description":"Fabricação de margarina e outras gorduras vegetais e de óleos não- comestíveis de animais","risk":3},{"code":"10.51-1","description":"Preparação do leite","risk":3},{"code":"10.52-0","description":"Fabricação de laticínios","risk":3},{"code":"10.53-8","description":"Fabricação de sorvetes e outros gelados comestíveis","risk":3},{"code":"10.61-9","description":"Beneficiamento de arroz e fabricação de produtos do arroz","risk":3},{"code":"10.62-7","description":"Moagem de trigo e fabricação de derivados","risk":3},{"code":"10.63-5","description":"Fabricação de farinha de mandioca e derivados","risk":3},{"code":"10.64-3","description":"Fabricação de farinha de milho e derivados, exceto óleos de milho","risk":3},{"code":"10.65-1","description":"Fabricação de amidos e féculas de vegetais e de óleos de milho","risk":3},{"code":"10.66-0","description":"Fabricação de alimentos para animais","risk":3},{"code":"10.69-4","description":"Moagem e fabricação de produtos de origem vegetal não especificados anteriormente","risk":3},{"code":"10.71-6","description":"Fabricação de açúcar em bruto","risk":3},{"code":"10.72-4","description":"Fabricação de açúcar refinado","risk":3},{"code":"10.81-3","description":"Torrefação e moagem de café","risk":3},{"code":"10.82-1","description":"Fabricação de produtos à base de café","risk":3},{"code":"10.91-1","description":"Fabricação de produtos de panificação","risk":3},{"code":"10.92-9","description":"Fabricação de biscoitos e bolachas","risk":3},{"code":"10.93-7","description":"Fabricação de produtos derivados do cacau, de chocolates e confeitos","risk":3},{"code":"10.94-5","description":"Fabricação de massas alimentícias","risk":3},{"code":"10.95-3","description":"Fabricação de especiarias, molhos, temperos e condimentos","risk":3},{"code":"10.96-1","description":"Fabricação de alimentos e pratos prontos","risk":3},{"code":"10.99-6","description":"Fabricação de produtos alimentícios não especificados anteriormente","risk":3},{"code":"11.11-9","description":"Fabricação de aguardentes e outras bebidas destiladas","risk":3},{"code":"11.12-7","description":"Fabricação de vinho","risk":3},{"code":"11.13-5","description":"Fabricação de malte, cervejas e chopes","risk":3},{"code":"11.21-6","description":"Fabricação de águas envasadas","risk":3},{"code":"11.22-4","description":"Fabricação de refrigerantes e de outras bebidas não-alcoólicas","risk":3},{"code":"12.10-7","description":"Processamento industrial do fumo","risk":3},{"code":"12.20-4","description":"Fabricação de produtos do fumo","risk":3},{"code":"13.11-1","description":"Preparação e fiação de fibras de algodão","risk":3},{"code":"13.12-0","description":"Preparação e fiação de fibras têxteis naturais, exceto algodão","risk":3},{"code":"13.13-8","description":"Fiação de fibras artificiais e sintéticas","risk":3},{"code":"13.14-6","description":"Fabricação de linhas para costurar e bordar","risk":3},{"code":"13.21-9","description":"Tecelagem de fios de algodão","risk":3},{"code":"13.22-7","description":"Tecelagem de fios de fibras têxteis naturais, exceto algodão","risk":3},{"code":"13.23-5","description":"Tecelagem de fios de fibras artificiais e sintéticas","risk":3},{"code":"13.30-8","description":"Fabricação de tecidos de malha","risk":3},{"code":"13.40-5","description":"Acabamentos em fios, tecidos e artefatos têxteis","risk":3},{"code":"13.51-1","description":"Fabricação de artefatos têxteis para uso doméstico","risk":3},{"code":"13.52-9","description":"Fabricação de artefatos de tapeçaria","risk":3},{"code":"13.53-7","description":"Fabricação de artefatos de cordoaria","risk":3},{"code":"13.54-5","description":"Fabricação de tecidos especiais, inclusive artefatos","risk":3},{"code":"13.59-6","description":"Fabricação de outros produtos têxteis não especificados anteriormente","risk":3},{"code":"14.11-8","description":"Confecção de roupas íntimas","risk":2},{"code":"14.12-6","description":"Confecção de peças do vestuário, exceto roupas íntimas","risk":2},{"code":"14.13-4","description":"Confecção de roupas profissionais","risk":2},{"code":"14.14-2","description":"Fabricação de acessórios do vestuário, exceto para segurança e proteção","risk":2},{"code":"14.21-5","description":"Fabricação de meias","risk":2},{"code":"14.22-3","description":"Fabricação de artigos do vestuário, produzidos em malharias e tricotagens, exceto meias","risk":2},{"code":"15.10-6","description":"Curtimento e outras preparações de couro","risk":3},{"code":"15.21-1","description":"Fabricação de artigos para viagem, bolsas e semelhantes de qualquer material","risk":2},{"code":"15.29-7","description":"Fabricação de artefatos de couro não especificados anteriormente","risk":2},{"code":"15.31-9","description":"Fabricação de calçados de couro","risk":3},{"code":"15.32-7","description":"Fabricação de tênis de qualquer material","risk":3},{"code":"15.33-5","description":"Fabricação de calçados de material sintético","risk":3},{"code":"15.39-4","description":"Fabricação de calçados de materiais não especificados anteriormente","risk":3},{"code":"15.40-8","description":"Fabricação de partes para calçados, de qualquer material","risk":3},{"code":"16.10-2","description":"Desdobramento de madeira","risk":3},{"code":"16.21-8","description":"Fabricação de madeira laminada e de chapas de madeira compensada, prensada e aglomerada","risk":3},{"code":"16.22-6","description":"Fabricação de estruturas de madeira e de artigos de carpintaria para construção","risk":3},{"code":"16.23-4","description":"Fabricação de artefatos de tanoaria e de embalagens de madeira","risk":3},{"code":"16.29-3","description":"Fabricação de artefatos de madeira, palha, cortiça, vime e material trançado não especificados anteriormente, exceto móveis","risk":3},{"code":"17.10-9","description":"Fabricação de celulose e outras pastas para a fabricação de papel","risk":3},{"code":"17.21-4","description":"Fabricação de papel","risk":3},{"code":"17.22-2","description":"Fabricação de cartolina e papel-cartão","risk":3},{"code":"17.31-1","description":"Fabricação de embalagens de papel","risk":2},{"code":"17.32-0","description":"Fabricação de embalagens de cartolina e papel-cartão","risk":2},{"code":"17.33-8","description":"Fabricação de chapas e de embalagens de papelão ondulado","risk":2},{"code":"17.41-9","description":"Fabricação de produtos de papel, cartolina, papel-cartão e papelão ondulado para uso comercial e de escritório","risk":2},{"code":"17.42-7","description":"Fabricação de produtos de papel para usos doméstico e higiênico-sanitário","risk":2},{"code":"17.49-4","description":"Fabricação de produtos de pastas celulósicas, papel, cartolina, papel-cartão e papelão ondulado não especificados anteriormente","risk":2},{"code":"18.11-3","description":"Impressão de jornais, livros, revistas e outras publicações periódicas","risk":3},{"code":"18.12-1","description":"Impressão de material de segurança","risk":3},{"code":"18.13-0","description":"Impressão de materiais para outros usos","risk":3},{"code":"18.21-1","description":"Serviços de pré-impressão","risk":3},{"code":"18.22-9","description":"Serviços de acabamentos gráficos","risk":3},{"code":"18.30-0","description":"Reprodução de materiais gravados em qualquer suporte","risk":3},{"code":"19.10-1","description":"Coquerias","risk":3},{"code":"19.21-7","description":"Fabricação de produtos do refino de petróleo","risk":3},{"code":"19.22-5","description":"Fabricação de produtos derivados do petróleo, exceto produtos do refino","risk":3},{"code":"19.31-4","description":"Fabricação de álcool","risk":3},{"code":"19.32-2","description":"Fabricação de biocombustíveis, exceto álcool","risk":3},{"code":"20.11-8","description":"Fabricação de cloro e álcalis","risk":3},{"code":"20.12-6","description":"Fabricação de intermediários para fertilizantes","risk":3},{"code":"20.13-4","description":"Fabricação de adubos e fertilizantes","risk":3},{"code":"20.14-2","description":"Fabricação de gases industriais","risk":3},{"code":"20.19-3","description":"Fabricação de produtos químicos inorgânicos não especificados anteriormente","risk":3},{"code":"20.21-5","description":"Fabricação de produtos petroquímicos básicos","risk":3},{"code":"20.22-3","description":"Fabricação de intermediários para plastificantes, resinas e fibras","risk":3},{"code":"20.29-1","description":"Fabricação de produtos químicos orgânicos não especificados anteriormente","risk":3},{"code":"20.31-2","description":"Fabricação de resinas termoplásticas","risk":3},{"code":"20.32-1","description":"Fabricação de resinas termofixas","risk":3},{"code":"20.33-9","description":"Fabricação de elastômeros","risk":3},{"code":"20.40-1","description":"Fabricação de fibras artificiais e sintéticas","risk":3},{"code":"20.51-7","description":"Fabricação de defensivos agrícolas","risk":3},{"code":"20.52-5","description":"Fabricação de desinfetantes domissanitários","risk":3},{"code":"20.61-4","description":"Fabricação de sabões e detergentes sintéticos","risk":3},{"code":"20.62-2","description":"Fabricação de produtos de limpeza e polimento","risk":3},{"code":"20.63-1","description":"Fabricação de cosméticos, produtos de perfumaria e de higiene pessoal","risk":2},{"code":"20.71-1","description":"Fabricação de tintas, vernizes, esmaltes e lacas","risk":3},{"code":"20.72-0","description":"Fabricação de tintas de impressão","risk":3},{"code":"20.73-8","description":"Fabricação de impermeabilizantes, solventes e produtos afins","risk":3},{"code":"20.91-6","description":"Fabricação de adesivos e selantes","risk":3},{"code":"20.92-4","description":"Fabricação de explosivos","risk":4},{"code":"20.93-2","description":"Fabricação de aditivos de uso industrial","risk":3},{"code":"20.94-1","description":"Fabricação de catalisadores","risk":3},{"code":"20.99-1","description":"Fabricação de produtos químicos não especificados anteriormente","risk":3},{"code":"21.10-6","description":"Fabricação de produtos farmoquímicos","risk":3},{"code":"21.21-1","description":"Fabricação de medicamentos para uso humano","risk":3},{"code":"21.22-0","description":"Fabricação de medicamentos para uso veterinário","risk":3},{"code":"21.23-8","description":"Fabricação de preparações farmacêuticas","risk":3},{"code":"22.11-1","description":"Fabricação de pneumáticos e de câmaras-de-ar","risk":3},{"code":"22.12-9","description":"Reforma de pneumáticos usados","risk":3},{"code":"22.19-6","description":"Fabricação de artefatos de borracha não especificados anteriormente","risk":3},{"code":"22.21-8","description":"Fabricação de laminados planos e tubulares de material plástico","risk":3},{"code":"22.22-6","description":"Fabricação de embalagens de material plástico","risk":3},{"code":"22.23-4","description":"Fabricação de tubos e acessórios de material plástico para uso na construção","risk":3},{"code":"22.29-3","description":"Fabricação de artefatos de material plástico não especificados anteriormente","risk":3},{"code":"23.11-7","description":"Fabricação de vidro plano e de segurança","risk":3},{"code":"23.12-5","description":"Fabricação de embalagens de vidro","risk":3},{"code":"23.19-2","description":"Fabricação de artigos de vidro","risk":3},{"code":"23.20-6","description":"Fabricação de cimento","risk":4},{"code":"23.30-3","description":"Fabricação de artefatos de concreto, cimento, fibrocimento, gesso e materiais semelhantes","risk":4},{"code":"23.41-9","description":"Fabricação de produtos cerâmicos refratários","risk":4},{"code":"23.42-7","description":"Fabricação de produtos cerâmicos não-refratários para uso estrutural na construção","risk":3},{"code":"23.49-4","description":"Fabricação de produtos cerâmicos não-refratários não especificados anteriormente","risk":4},{"code":"23.91-5","description":"Aparelhamento e outros trabalhos em pedras","risk":3},{"code":"23.92-3","description":"Fabricação de cal e gesso","risk":4},{"code":"23.99-1","description":"Fabricação de produtos de minerais não-metálicos não especificados anteriormente","risk":3},{"code":"24.11-3","description":"Produção de ferro-gusa","risk":4},{"code":"24.12-1","description":"Produção de ferroligas","risk":4},{"code":"24.21-1","description":"Produção de semi-acabados de aço","risk":4},{"code":"24.22-9","description":"Produção de laminados planos de aço","risk":4},{"code":"24.23-7","description":"Produção de laminados longos de aço","risk":4},{"code":"24.24-5","description":"Produção de relaminados, trefilados e perfilados de aço","risk":4},{"code":"24.31-8","description":"Produção de tubos de aço com costura","risk":4},{"code":"24.39-3","description":"Produção de outros tubos de ferro e aço","risk":4},{"code":"24.41-5","description":"Metalurgia do alumínio e suas ligas","risk":4},{"code":"24.42-3","description":"Metalurgia dos metais preciosos","risk":4},{"code":"24.43-1","description":"Metalurgia do cobre","risk":4},{"code":"24.49-1","description":"Metalurgia dos metais não-ferrosos e suas ligas não especificados","risk":4},{"code":"24.51-2","description":"Fundição de ferro e aço","risk":4},{"code":"24.52-1","description":"Fundição de metais não-ferrosos e suas ligas","risk":4},{"code":"25.11-0","description":"Fabricação de estruturas metálicas","risk":4},{"code":"25.12-8","description":"Fabricação de esquadrias de metal","risk":3},{"code":"25.13-6","description":"Fabricação de obras de caldeiraria pesada","risk":3},{"code":"25.21-7","description":"Fabricação de tanques, reservatórios metálicos e caldeiras para aquecimento central","risk":3},{"code":"25.22-5","description":"Fabricação de caldeiras geradoras de vapor, exceto para aquecimento central e para veículos","risk":3},{"code":"25.31-4","description":"Produção de forjados de aço e de metais não-ferrosos e suas ligas","risk":4},{"code":"25.32-2","description":"Produção de artefatos estampados de metal; metalurgia do pó","risk":4},{"code":"25.39-0","description":"Serviços de usinagem, solda, tratamento e revestimento em metais","risk":4},{"code":"25.41-1","description":"Fabricação de artigos de cutelaria","risk":3},{"code":"25.42-0","description":"Fabricação de artigos de serralheria, exceto esquadrias","risk":3},{"code":"25.43-8","description":"Fabricação de ferramentas","risk":3},{"code":"25.50-1","description":"Fabricação de equipamento bélico pesado, armas de fogo e munições","risk":4},{"code":"25.91-8","description":"Fabricação de embalagens metálicas","risk":3},{"code":"25.92-6","description":"Fabricação de produtos de trefilados de metal","risk":4},{"code":"25.93-4","description":"Fabricação de artigos de metal para uso doméstico e pessoal","risk":3},{"code":"25.99-3","description":"Fabricação de produtos de metal não especificados anteriormente","risk":3},{"code":"26.10-8","description":"Fabricação de componentes eletrônicos","risk":3},{"code":"26.21-3","description":"Fabricação de equipamentos de informática","risk":3},{"code":"26.22-1","description":"Fabricação de periféricos para equipamentos de informática","risk":3},{"code":"26.31-1","description":"Fabricação de equipamentos transmissores de comunicação","risk":3},{"code":"26.32-9","description":"Fabricação de aparelhos telefônicos e de outros equipamentos de comunicação","risk":3},{"code":"26.40-0","description":"Fabricação de aparelhos de recepção, reprodução, gravação e amplificação de áudio e vídeo","risk":3},{"code":"26.51-5","description":"Fabricação de aparelhos e equipamentos de medida, teste e controle","risk":3},{"code":"26.52-3","description":"Fabricação de cronômetros e relógios","risk":3},{"code":"26.60-4","description":"Fabricação de aparelhos eletromédicos e eletroterapêuticos e equipamentos de irradiação","risk":3},{"code":"26.70-1","description":"Fabricação de equipamentos e instrumentos ópticos, fotográficos e cinematográficos","risk":3},{"code":"26.80-9","description":"Fabricação de mídias virgens, magnéticas e ópticas","risk":3},{"code":"27.10-4","description":"Fabricação de geradores, transformadores e motores elétricos","risk":3},{"code":"27.21-0","description":"Fabricação de pilhas, baterias e acumuladores elétricos, exceto para veículos automotores","risk":3},{"code":"27.22-8","description":"Fabricação de baterias e acumuladores para veículos automotores","risk":3},{"code":"27.31-7","description":"Fabricação de aparelhos e equipamentos para distribuição e controle de energia elétrica","risk":3},{"code":"27.32-5","description":"Fabricação de material elétrico para instalações em circuito de consumo","risk":3},{"code":"27.33-3","description":"Fabricação de fios, cabos e condutores elétricos isolados","risk":3},{"code":"27.40-6","description":"Fabricação de lâmpadas e outros equipamentos de iluminação","risk":3},{"code":"27.51-1","description":"Fabricação de fogões, refrigeradores e máquinas de lavar e secar para uso doméstico","risk":3},{"code":"27.59-7","description":"Fabricação de aparelhos eletrodomésticos não especificados anteriormente","risk":3},{"code":"27.90-2","description":"Fabricação de equipamentos e aparelhos elétricos não especificados anteriormente","risk":3},{"code":"28.11-9","description":"Fabricação de motores e turbinas, exceto para aviões e veículos rodoviários","risk":3},{"code":"28.12-7","description":"Fabricação de equipamentos hidráulicos e pneumáticos, exceto válvulas","risk":3},{"code":"28.13-5","description":"Fabricação de válvulas, registros e dispositivos semelhantes","risk":3},{"code":"28.14-3","description":"Fabricação de compressores","risk":3},{"code":"28.15-1","description":"Fabricação de equipamentos de transmissão para fins industriais","risk":3},{"code":"28.21-6","description":"Fabricação de aparelhos e equipamentos para instalações térmicas","risk":3},{"code":"28.22-4","description":"Fabricação de máquinas, equipamentos e aparelhos para transporte e elevação de cargas e pessoas","risk":3},{"code":"28.23-2","description":"Fabricação de máquinas e aparelhos de refrigeração e ventilação para uso industrial e comercial","risk":3},{"code":"28.24-1","description":"Fabricação de aparelhos e equipamentos de ar condicionado","risk":3},{"code":"28.25-9","description":"Fabricação de máquinas e equipamentos para saneamento básico e","risk":3},{"code":"28.29-1","description":"Fabricação de máquinas e equipamentos de uso geral não especificados anteriormente","risk":3},{"code":"28.31-3","description":"Fabricação de tratores agrícolas","risk":3},{"code":"28.32-1","description":"Fabricação de equipamentos para irrigação agrícola","risk":3},{"code":"28.33-0","description":"Fabricação de máquinas e equipamentos para a agricultura e pecuária, exceto para irrigação","risk":3},{"code":"28.40-2","description":"Fabricação de máquinas-ferramenta","risk":3},{"code":"28.51-8","description":"Fabricação de máquinas e equipamentos para a prospecção e extração de petróleo","risk":3},{"code":"28.52-6","description":"Fabricação de outras máquinas e equipamentos para uso na extração mineral, exceto na extração de petróleo","risk":3},{"code":"28.53-4","description":"Fabricação de tratores, exceto agrícolas","risk":3},{"code":"28.54-2","description":"Fabricação de máquinas e equipamentos para terraplenagem, pavimentação e construção, exceto tratores","risk":3},{"code":"28.61-5","description":"Fabricação de máquinas para a indústria metalúrgica, exceto máquinas- ferramenta","risk":3},{"code":"28.62-3","description":"Fabricação de máquinas e equipamentos para as indústrias de alimentos, bebidas e fumo","risk":3},{"code":"28.63-1","description":"Fabricação de máquinas e equipamentos para a indústria têxtil","risk":3},{"code":"28.64-0","description":"Fabricação de máquinas e equipamentos para as indústrias do vestuário, do couro e de calçados","risk":3},{"code":"28.65-8","description":"Fabricação de máquinas e equipamentos para as indústrias de celulose, papel e papelão e artefatos","risk":3},{"code":"28.66-6","description":"Fabricação de máquinas e equipamentos para a indústria do plástico","risk":3},{"code":"28.69-1","description":"Fabricação de máquinas e equipamentos para uso industrial específico não especificados anteriormente","risk":3},{"code":"29.10-7","description":"Fabricação de automóveis, camionetas e utilitários","risk":3},{"code":"29.20-4","description":"Fabricação de caminhões e ônibus","risk":3},{"code":"29.30-1","description":"Fabricação de cabines, carrocerias e reboques para veículos automotores","risk":3},{"code":"29.41-7","description":"Fabricação de peças e acessórios para o sistema motor de veículos automotores","risk":3},{"code":"29.42-5","description":"Fabricação de peças e acessórios para os sistemas de marcha e transmissão de veículos automotores","risk":3},{"code":"29.43-3","description":"Fabricação de peças e acessórios para o sistema de freios de veículos automotores","risk":3},{"code":"29.44-1","description":"Fabricação de peças e acessórios para o sistema de direção e suspensão de veículos automotores","risk":3},{"code":"29.45-0","description":"Fabricação de material elétrico e eletrônico para veículos automotores, exceto baterias","risk":3},{"code":"29.49-2","description":"Fabricação de peças e acessórios para veículos automotores não especificados anteriormente","risk":3},{"code":"29.50-6","description":"Recondicionamento e recuperação de motores para veículos automotores","risk":3},{"code":"30.11-3","description":"Construção de embarcações e estruturas flutuantes","risk":3},{"code":"30.12-1","description":"Construção de embarcações para esporte e lazer","risk":3},{"code":"30.31-8","description":"Fabricação de locomotivas, vagões e outros materiais rodantes","risk":3},{"code":"30.32-6","description":"Fabricação de peças e acessórios para veículos ferroviários","risk":3},{"code":"30.41-5","description":"Fabricação de aeronaves","risk":3},{"code":"30.42-3","description":"Fabricação de turbinas, motores e outros componentes e peças para aeronaves","risk":3},{"code":"30.50-4","description":"Fabricação de veículos militares de combate","risk":3},{"code":"30.91-1","description":"Fabricação de motocicletas","risk":3},{"code":"30.92-0","description":"Fabricação de bicicletas e triciclos não-motorizados","risk":3},{"code":"30.99-7","description":"Fabricação de equipamentos de transporte não especificados anteriormente","risk":3},{"code":"31.01-2","description":"Fabricação de móveis com predominância de madeira","risk":3},{"code":"31.02-1","description":"Fabricação de móveis com predominância de metal","risk":3},{"code":"31.03-9","description":"Fabricação de móveis de outros materiais, exceto madeira e metal","risk":3},{"code":"31.04-7","description":"Fabricação de colchões","risk":2},{"code":"32.11-6","description":"Lapidação de gemas e fabricação de artefatos de ourivesaria e joalheria","risk":3},{"code":"32.12-4","description":"Fabricação de bijuterias e artefatos semelhantes","risk":3},{"code":"32.20-5","description":"Fabricação de instrumentos musicais","risk":3},{"code":"32.30-2","description":"Fabricação de artefatos para pesca e esporte","risk":3},{"code":"32.40-0","description":"Fabricação de brinquedos e jogos recreativos","risk":3},{"code":"32.50-7","description":"Fabricação de instrumentos e materiais para uso médico e odontológico e de artigos ópticos","risk":3},{"code":"32.91-4","description":"Fabricação de escovas, pincéis e vassouras","risk":3},{"code":"32.92-2","description":"Fabricação de equipamentos e acessórios para segurança e proteção pessoal e profissional","risk":3},{"code":"32.99-0","description":"Fabricação de produtos diversos não especificados anteriormente","risk":3},{"code":"33.11-2","description":"Manutenção e reparação de tanques, reservatórios metálicos e caldeiras, exceto para veículos","risk":3},{"code":"33.12-1","description":"Manutenção e reparação de equipamentos eletrônicos e ópticos","risk":3},{"code":"33.13-9","description":"Manutenção e reparação de máquinas e equipamentos elétricos","risk":3},{"code":"33.14-7","description":"Manutenção e reparação de máquinas e equipamentos da indústria mecânica","risk":3},{"code":"33.15-5","description":"Manutenção e reparação de veículos ferroviários","risk":3},{"code":"33.16-3","description":"Manutenção e reparação de aeronaves","risk":3},{"code":"33.17-1","description":"Manutenção e reparação de embarcações","risk":3},{"code":"33.19-8","description":"Manutenção e reparação de equipamentos e produtos não especificados anteriormente","risk":3},{"code":"33.21-0","description":"Instalação de máquinas e equipamentos industriais","risk":3},{"code":"33.29-5","description":"Instalação de equipamentos não especificados anteriormente","risk":3},{"code":"35.11-5","description":"Geração de energia elétrica","risk":3},{"code":"35.12-3","description":"Transmissão de energia elétrica","risk":3},{"code":"35.13-1","description":"Comércio atacadista de energia elétrica","risk":3},{"code":"35.14-0","description":"Distribuição de energia elétrica","risk":3},{"code":"35.20-4","description":"Produção de gás; processamento de gás natural; distribuição de combustíveis gasosos por redes urbanas","risk":3},{"code":"35.30-1","description":"Produção e distribuição de vapor, água quente e ar condicionado","risk":3},{"code":"36.00-6","description":"Captação, tratamento e distribuição de água","risk":3},{"code":"37.01-1","description":"Gestão de redes de esgoto","risk":3},{"code":"37.02-9","description":"Atividades relacionadas a esgoto, exceto a gestão de redes","risk":3},{"code":"38.11-4","description":"Coleta de resíduos não-perigosos","risk":3},{"code":"38.12-2","description":"Coleta de resíduos perigosos","risk":3},{"code":"38.21-1","description":"Tratamento e disposição de resíduos não-perigosos","risk":3},{"code":"38.22-0","description":"Tratamento e disposição de resíduos perigosos","risk":3},{"code":"38.31-9","description":"Recuperação de materiais metálicos","risk":3},{"code":"38.32-7","description":"Recuperação de materiais plásticos","risk":3},{"code":"38.39-4","description":"Recuperação de materiais não especificados anteriormente","risk":3},{"code":"39.00-5","description":"Descontaminação e outros serviços de gestão de resíduos","risk":3},{"code":"41.10-7","description":"Incorporação de empreendimentos imobiliários","risk":1},{"code":"41.20-4","description":"Construção de edifícios","risk":3},{"code":"42.11-1","description":"Construção de rodovias e ferrovias","risk":4},{"code":"42.12-0","description":"Construção de obras-de-arte especiais","risk":4},{"code":"42.13-8","description":"Obras de urbanização - ruas, praças e calçadas","risk":3},{"code":"42.21-9","description":"Obras para geração e distribuição de energia elétrica e para telecomunicações","risk":4},{"code":"42.22-7","description":"Construção de redes de abastecimento de água, coleta de esgoto e construções correlatas","risk":4},{"code":"42.23-5","description":"Construção de redes de transportes por dutos, exceto para água e esgoto","risk":4},{"code":"42.91-0","description":"Obras portuárias, marítimas e fluviais","risk":4},{"code":"42.92-8","description":"Montagem de instalações industriais e de estruturas metálicas","risk":4},{"code":"42.99-5","description":"Obras de engenharia civil não especificadas anteriormente","risk":3},{"code":"43.11-8","description":"Demolição e preparação de canteiros de obras","risk":4},{"code":"43.12-6","description":"Perfurações e sondagens","risk":4},{"code":"43.13-4","description":"Obras de terraplenagem","risk":3},{"code":"43.19-3","description":"Serviços de preparação do terreno não especificados anteriormente","risk":3},{"code":"43.21-5","description":"Instalações elétricas","risk":3},{"code":"43.22-3","description":"Instalações hidráulicas, de sistemas de ventilação e refrigeração","risk":3},{"code":"43.29-1","description":"Obras de instalações em construções não especificadas anteriormente","risk":3},{"code":"43.30-4","description":"Obras de acabamento","risk":3},{"code":"43.91-6","description":"Obras de fundações","risk":4},{"code":"43.99-1","description":"Serviços especializados para construção não especificados anteriormente","risk":3},{"code":"45.11-1","description":"Comércio a varejo e por atacado de veículos automotores","risk":2},{"code":"45.12-9","description":"Representantes comerciais e agentes do comércio de veículos automotores","risk":2},{"code":"45.20-0","description":"Manutenção e reparação de veículos automotores","risk":3},{"code":"45.30-7","description":"Comércio de peças e acessórios para veículos automotores","risk":2},{"code":"45.41-2","description":"Comércio por atacado e a varejo de motocicletas, peças e acessórios","risk":2},{"code":"45.42-1","description":"Representantes comerciais e agentes do comércio de motocicletas, peças e acessórios","risk":2},{"code":"45.43-9","description":"Manutenção e reparação de motocicletas","risk":3},{"code":"46.11-7","description":"Representantes comerciais e agentes do comércio de matérias-primas agrícolas e animais vivos","risk":2},{"code":"46.12-5","description":"Representantes comerciais e agentes do comércio de combustíveis, minerais, produtos siderúrgicos e químicos","risk":2},{"code":"46.13-3","description":"Representantes comerciais e agentes do comércio de madeira, material de construção e ferragens","risk":2},{"code":"46.14-1","description":"Representantes comerciais e agentes do comércio de máquinas, equipamentos, embarcações e aeronaves","risk":2},{"code":"46.15-0","description":"Representantes comerciais e agentes do comércio de eletrodomésticos, móveis e artigos de uso doméstico","risk":2},{"code":"46.16-8","description":"Representantes comerciais e agentes do comércio de têxteis, vestuário, calçados e artigos de viagem","risk":2},{"code":"46.17-6","description":"Representantes comerciais e agentes do comércio de produtos alimentícios, bebidas e fumo","risk":2},{"code":"46.18-4","description":"Representantes comerciais e agentes do comércio especializado em produtos não especificados anteriormente","risk":2},{"code":"46.19-2","description":"Representantes comerciais e agentes do comércio de mercadorias em geral não especializado","risk":2},{"code":"46.21-4","description":"Comércio atacadista de café em grão","risk":2},{"code":"46.22-2","description":"Comércio atacadista de soja","risk":2},{"code":"46.23-1","description":"Comércio atacadista de animais vivos, alimentos para animais e matérias- primas agrícolas, exceto café e soja","risk":2},{"code":"46.31-1","description":"Comércio atacadista de leite e laticínios","risk":2},{"code":"46.32-0","description":"Comércio atacadista de cereais e leguminosas beneficiados, farinhas, amidos e féculas","risk":2},{"code":"46.33-8","description":"Comércio atacadista de hortifrutigranjeiros","risk":2},{"code":"46.34-6","description":"Comércio atacadista de carnes, produtos da carne e pescado","risk":2},{"code":"46.35-4","description":"Comércio atacadista de bebidas","risk":2},{"code":"46.36-2","description":"Comércio atacadista de produtos do fumo","risk":2},{"code":"46.37-1","description":"Comércio atacadista especializado em produtos alimentícios não especificados anteriormente","risk":2},{"code":"46.39-7","description":"Comércio atacadista de produtos alimentícios em geral","risk":2},{"code":"46.41-9","description":"Comércio atacadista de tecidos, artefatos de tecidos e de armarinho","risk":2},{"code":"46.42-7","description":"Comércio atacadista de artigos do vestuário e acessórios","risk":2},{"code":"46.43-5","description":"Comércio atacadista de calçados e artigos de viagem","risk":2},{"code":"46.44-3","description":"Comércio atacadista de produtos farmacêuticos para uso humano e veterinário","risk":2},{"code":"46.45-1","description":"Comércio atacadista de instrumentos e materiais para uso médico, cirúrgico, ortopédico e odontológico","risk":2},{"code":"46.46-0","description":"Comércio atacadista de cosméticos, produtos de perfumaria e de higiene pessoal","risk":2},{"code":"46.47-8","description":"Comércio atacadista de artigos de escritório e de papelaria; livros, jornais e outras publicações","risk":2},{"code":"46.49-4","description":"Comércio atacadista de equipamentos e artigos de uso pessoal e doméstico não especificados anteriormente","risk":2},{"code":"46.51-6","description":"Comércio atacadista de computadores, periféricos e suprimentos de informática","risk":3},{"code":"46.52-4","description":"Comércio atacadista de componentes eletrônicos e equipamentos de telefonia e comunicação","risk":3},{"code":"46.61-3","description":"Comércio atacadista de máquinas, aparelhos e equipamentos para uso agropecuário; partes e peças","risk":3},{"code":"46.62-1","description":"Comércio atacadista de máquinas, equipamentos para terraplenagem, mineração e construção; partes e peças","risk":3},{"code":"46.63-0","description":"Comércio atacadista de máquinas e equipamentos para uso industrial; partes e peças","risk":3},{"code":"46.64-8","description":"Comércio atacadista de máquinas, aparelhos e equipamentos para uso odonto-médico-hospitalar; partes e peças","risk":3},{"code":"46.65-6","description":"Comércio atacadista de máquinas e equipamentos para uso comercial; partes e peças","risk":3},{"code":"46.69-9","description":"Comércio atacadista de máquinas, aparelhos e equipamentos não especificados anteriormente; partes e peças","risk":3},{"code":"46.71-1","description":"Comércio atacadista de madeira e produtos derivados","risk":3},{"code":"46.72-9","description":"Comércio atacadista de ferragens e ferramentas","risk":3},{"code":"46.73-7","description":"Comércio atacadista de material elétrico","risk":3},{"code":"46.74-5","description":"Comércio atacadista de cimento","risk":3},{"code":"46.79-6","description":"Comércio atacadista especializado de materiais de construção não especificados anteriormente e de materiais de construção em geral","risk":3},{"code":"46.81-8","description":"Comércio atacadista de combustíveis sólidos, líquidos e gasosos, exceto gás natural e GLP","risk":3},{"code":"46.82-6","description":"Comércio atacadista de gás liqüefeito de petróleo (GLP)","risk":3},{"code":"46.83-4","description":"Comércio atacadista de defensivos agrícolas, adubos, fertilizantes e corretivos do solo","risk":3},{"code":"46.84-2","description":"Comércio atacadista de produtos químicos e petroquímicos, exceto","risk":3},{"code":"46.85-1","description":"Comércio atacadista de produtos siderúrgicos e metalúrgicos, exceto para construção","risk":3},{"code":"46.86-9","description":"Comércio atacadista de papel e papelão em bruto e de embalagens","risk":3},{"code":"46.87-7","description":"Comércio atacadista de resíduos e sucatas","risk":3},{"code":"46.89-3","description":"Comércio atacadista especializado de outros produtos intermediários não especificados anteriormente","risk":3},{"code":"46.91-5","description":"Comércio atacadista de mercadorias em geral, com predominância de produtos alimentícios","risk":2},{"code":"46.92-3","description":"Comércio atacadista de mercadorias em geral, com predominância de insumos agropecuários","risk":2},{"code":"46.93-1","description":"Comércio atacadista de mercadorias em geral, sem predominância de alimentos ou de insumos agropecuários","risk":2},{"code":"47.11-3","description":"Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - hipermercados e supermercados","risk":2},{"code":"47.12-1","description":"Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - minimercados, mercearias e armazéns","risk":2},{"code":"47.13-0","description":"Comércio varejista de mercadorias em geral, sem predominância de produtos alimentícios","risk":2},{"code":"47.21-1","description":"Comércio varejista de produtos de padaria, laticínio, doces, balas e semelhantes","risk":2},{"code":"47.22-9","description":"Comércio varejista de carnes e pescados - açougues e peixarias","risk":3},{"code":"47.23-7","description":"Comércio varejista de bebidas","risk":2},{"code":"47.24-5","description":"Comércio varejista de hortifrutigranjeiros","risk":2},{"code":"47.29-6","description":"Comércio varejista de produtos alimentícios em geral ou especializado em produtos alimentícios não especificados anteriormente; produtos do fumo","risk":2},{"code":"47.31-8","description":"Comércio varejista de combustíveis para veículos automotores","risk":3},{"code":"47.32-6","description":"Comércio varejista de lubrificantes","risk":3},{"code":"47.41-5","description":"Comércio varejista de tintas e materiais para pintura","risk":2},{"code":"47.42-3","description":"Comércio varejista de material elétrico","risk":1},{"code":"47.43-1","description":"Comércio varejista de vidros","risk":2},{"code":"47.44-0","description":"Comércio varejista de ferragens, madeira e materiais de construção","risk":2},{"code":"47.51-2","description":"Comércio varejista especializado de equipamentos e suprimentos de informática","risk":1},{"code":"47.52-1","description":"Comércio varejista especializado de equipamentos de telefonia e comunicação","risk":1},{"code":"47.53-9","description":"Comércio varejista especializado de eletrodomésticos e equipamentos de áudio e vídeo","risk":1},{"code":"47.54-7","description":"Comércio varejista especializado de móveis, colchoaria e artigos de iluminação","risk":1},{"code":"47.55-5","description":"Comércio varejista especializado de tecidos e artigos de cama, mesa e banho","risk":1},{"code":"47.56-3","description":"Comércio varejista especializado de instrumentos musicais e acessórios","risk":1},{"code":"47.57-1","description":"Comércio varejista especializado de peças e acessórios para aparelhos eletroeletrônicos para uso doméstico, exceto informática e comunicação","risk":1},{"code":"47.59-8","description":"Comércio varejista de artigos de uso doméstico não especificados anteriormente","risk":1},{"code":"47.61-0","description":"Comércio varejista de livros, jornais, revistas e papelaria","risk":1},{"code":"47.62-8","description":"Comércio varejista de discos, CDs, DVDs e fitas","risk":1},{"code":"47.63-6","description":"Comércio varejista de artigos recreativos e esportivos","risk":1},{"code":"47.71-7","description":"Comércio varejista de produtos farmacêuticos para uso humano e veterinário","risk":2},{"code":"47.72-5","description":"Comércio varejista de cosméticos, produtos de perfumaria e de higiene pessoal","risk":1},{"code":"47.73-3","description":"Comércio varejista de artigos médicos e ortopédicos","risk":1},{"code":"47.74-1","description":"Comércio varejista de artigos de óptica","risk":1},{"code":"47.81-4","description":"Comércio varejista de artigos do vestuário e acessórios","risk":1},{"code":"47.82-2","description":"Comércio varejista de calçados e artigos de viagem","risk":1},{"code":"47.83-1","description":"Comércio varejista de jóias e relógios","risk":1},{"code":"47.84-9","description":"Comércio varejista de gás liqüefeito de petróleo (GLP)","risk":3},{"code":"47.85-7","description":"Comércio varejista de artigos usados","risk":2},{"code":"47.89-0","description":"Comércio varejista de outros produtos novos não especificados anteriormente","risk":1},{"code":"47.90-3","description":"Comércio ambulante e outros tipos de comércio varejista","risk":2},{"code":"49.11-6","description":"Transporte ferroviário de carga","risk":3},{"code":"49.12-4","description":"Transporte metroferroviário de passageiros","risk":3},{"code":"49.21-3","description":"Transporte rodoviário coletivo de passageiros, com itinerário fixo, municipal e em região metropolitana","risk":3},{"code":"49.22-1","description":"Transporte rodoviário coletivo de passageiros, com itinerário fixo, intermunicipal, interestadual e internacional","risk":3},{"code":"49.23-0","description":"Transporte rodoviário de táxi","risk":3},{"code":"49.24-8","description":"Transporte escolar","risk":3},{"code":"49.29-9","description":"Transporte rodoviário coletivo de passageiros, sob regime de fretamento, e outros transportes rodoviários não especificados anteriormente","risk":3},{"code":"49.30-2","description":"Transporte rodoviário de carga","risk":3},{"code":"49.40-0","description":"Transporte dutoviário","risk":3},{"code":"49.50-7","description":"Trens turísticos, teleféricos e similares","risk":3},{"code":"50.11-4","description":"Transporte marítimo de cabotagem","risk":3},{"code":"50.12-2","description":"Transporte marítimo de longo curso","risk":3},{"code":"50.21-1","description":"Transporte por navegação interior de carga","risk":3},{"code":"50.22-0","description":"Transporte por navegação interior de passageiros em linhas regulares","risk":3},{"code":"50.30-1","description":"Navegação de apoio","risk":3},{"code":"50.91-2","description":"Transporte por navegação de travessia","risk":3},{"code":"50.99-8","description":"Transportes aquaviários não especificados anteriormente","risk":3},{"code":"51.11-1","description":"Transporte aéreo de passageiros regular","risk":3},{"code":"51.12-9","description":"Transporte aéreo de passageiros não-regular","risk":3},{"code":"51.20-0","description":"Transporte aéreo de carga","risk":3},{"code":"51.30-7","description":"Transporte espacial","risk":3},{"code":"52.11-7","description":"Armazenamento","risk":3},{"code":"52.12-5","description":"Carga e descarga","risk":3},{"code":"52.21-4","description":"Concessionárias de rodovias, pontes, túneis e serviços relacionados","risk":3},{"code":"52.22-2","description":"Terminais rodoviários e ferroviários","risk":3},{"code":"52.23-1","description":"Estacionamento de veículos","risk":3},{"code":"52.29-0","description":"Atividades auxiliares dos transportes terrestres não especificadas anteriormente","risk":3},{"code":"52.31-1","description":"Gestão de portos e terminais","risk":3},{"code":"52.32-0","description":"Atividades de agenciamento marítimo","risk":3},{"code":"52.39-7","description":"Atividades auxiliares dos transportes aquaviários não especificadas anteriormente","risk":3},{"code":"52.40-1","description":"Atividades auxiliares dos transportes aéreos","risk":3},{"code":"52.50-8","description":"Atividades relacionadas à organização do transporte de carga","risk":3},{"code":"53.10-5","description":"Atividades de Correio","risk":2},{"code":"53.20-2","description":"Atividades de malote e de entrega","risk":2},{"code":"55.10-8","description":"Hotéis e similares","risk":2},{"code":"55.90-6","description":"Outros tipos de alojamento não especificados anteriormente","risk":2},{"code":"56.11-2","description":"Restaurantes e outros estabelecimentos de serviços de alimentação e bebidas","risk":2},{"code":"56.12-1","description":"Serviços ambulantes de alimentação","risk":2},{"code":"56.20-1","description":"Serviços de catering, bufê e outros serviços de comida preparada","risk":2},{"code":"58.11-5","description":"Edição de livros","risk":3},{"code":"58.12-3","description":"Edição de jornais","risk":3},{"code":"58.13-1","description":"Edição de revistas","risk":3},{"code":"58.19-1","description":"Edição de cadastros, listas e outros produtos gráficos","risk":3},{"code":"58.21-2","description":"Edição integrada à impressão de livros","risk":3},{"code":"58.22-1","description":"Edição integrada à impressão de jornais","risk":3},{"code":"58.23-9","description":"Edição integrada à impressão de revistas","risk":3},{"code":"58.29-8","description":"Edição integrada à impressão de cadastros, listas e outros produtos gráficos","risk":3},{"code":"59.11-1","description":"Atividades de produção cinematográfica, de vídeos e de programas de televisão","risk":2},{"code":"59.12-0","description":"Atividades de pós-produção cinematográfica, de vídeos e de programas de televisão","risk":2},{"code":"59.13-8","description":"Distribuição cinematográfica, de vídeo e de programas de televisão","risk":2},{"code":"59.14-6","description":"Atividades de exibição cinematográfica","risk":2},{"code":"59.20-1","description":"Atividades de gravação de som e de edição de música","risk":2},{"code":"60.10-1","description":"Atividades de rádio","risk":2},{"code":"60.21-7","description":"Atividades de televisão aberta","risk":2},{"code":"60.22-5","description":"Programadoras e atividades relacionadas à televisão por assinatura","risk":2},{"code":"61.10-8","description":"Telecomunicações por fio","risk":2},{"code":"61.20-5","description":"Telecomunicações sem fio","risk":2},{"code":"61.30-2","description":"Telecomunicações por satélite","risk":2},{"code":"61.41-8","description":"Operadoras de televisão por assinatura por cabo","risk":2},{"code":"61.42-6","description":"Operadoras de televisão por assinatura por microondas","risk":2},{"code":"61.43-4","description":"Operadoras de televisão por assinatura por satélite","risk":2},{"code":"61.90-6","description":"Outras atividades de telecomunicações","risk":2},{"code":"62.01-5","description":"Desenvolvimento de programas de computador sob encomenda","risk":2},{"code":"62.02-3","description":"Desenvolvimento e licenciamento de programas de computador customizáveis","risk":2},{"code":"62.03-1","description":"Desenvolvimento e licenciamento de programas de computador não- customizáveis","risk":2},{"code":"62.04-0","description":"Consultoria em tecnologia da informação","risk":2},{"code":"62.09-1","description":"Suporte técnico, manutenção e outros serviços em tecnologia da informação","risk":2},{"code":"63.11-9","description":"Tratamento de dados, provedores de serviços de aplicação e serviços de hospedagem na internet","risk":2},{"code":"63.19-4","description":"Portais, provedores de conteúdo e outros serviços de informação na internet","risk":2},{"code":"63.91-7","description":"Agências de notícias","risk":2},{"code":"63.99-2","description":"Outras atividades de prestação de serviços de informação não especificadas anteriormente","risk":2},{"code":"64.10-7","description":"Banco Central","risk":1},{"code":"64.21-2","description":"Bancos comerciais","risk":1},{"code":"64.22-1","description":"Bancos múltiplos, com carteira comercial","risk":1},{"code":"64.23-9","description":"Caixas econômicas","risk":1},{"code":"64.24-7","description":"Crédito cooperativo","risk":1},{"code":"64.31-0","description":"Bancos múltiplos, sem carteira comercial","risk":1},{"code":"64.32-8","description":"Bancos de investimento","risk":1},{"code":"64.33-6","description":"Bancos de desenvolvimento","risk":1},{"code":"64.34-4","description":"Agências de fomento","risk":1},{"code":"64.35-2","description":"Crédito imobiliário","risk":1},{"code":"64.36-1","description":"Sociedades de crédito, financiamento e investimento - financeiras","risk":1},{"code":"64.37-9","description":"Sociedades de crédito ao microempreendedor","risk":1},{"code":"64.38-7","description":"Bancos de câmbio e outras instituições de intermediação não-monetária","risk":1},{"code":"64.40-9","description":"Arrendamento mercantil","risk":1},{"code":"64.50-6","description":"Sociedades de capitalização","risk":1},{"code":"64.61-1","description":"Holdings de instituições financeiras","risk":1},{"code":"64.62-0","description":"Holdings de instituições não-financeiras","risk":1},{"code":"64.63-8","description":"Outras sociedades de participação, exceto holdings","risk":1},{"code":"64.70-1","description":"Fundos de investimento","risk":1},{"code":"64.91-3","description":"Sociedades de fomento mercantil - factoring","risk":1},{"code":"64.92-1","description":"Securitização de créditos","risk":1},{"code":"64.93-0","description":"Administração de consórcios para aquisição de bens e direitos","risk":1},{"code":"64.99-9","description":"Outras atividades de serviços financeiros não especificadas anteriormente","risk":1},{"code":"65.11-1","description":"Seguros de vida","risk":1},{"code":"65.12-0","description":"Seguros não-vida","risk":1},{"code":"65.20-1","description":"Seguros-saúde","risk":1},{"code":"65.30-8","description":"Resseguros","risk":1},{"code":"65.41-3","description":"Previdência complementar fechada","risk":1},{"code":"65.42-1","description":"Previdência complementar aberta","risk":1},{"code":"65.50-2","description":"Planos de saúde","risk":1},{"code":"66.11-8","description":"Administração de bolsas e mercados de balcão organizados","risk":1},{"code":"66.12-6","description":"Atividades de intermediários em transações de títulos, valores mobiliários e mercadorias","risk":1},{"code":"66.13-4","description":"Administração de cartões de crédito","risk":1},{"code":"66.19-3","description":"Atividades auxiliares dos serviços financeiros não especificadas anteriormente","risk":1},{"code":"66.21-5","description":"Avaliação de riscos e perdas","risk":1},{"code":"66.22-3","description":"Corretores e agentes de seguros, de planos de previdência complementar e de saúde","risk":1},{"code":"66.29-1","description":"Atividades auxiliares dos seguros, da previdência complementar e dos planos de saúde não especificadas anteriormente","risk":1},{"code":"66.30-4","description":"Atividades de administração de fundos por contrato ou comissão","risk":1},{"code":"68.10-2","description":"Atividades imobiliárias de imóveis próprios","risk":1},{"code":"68.21-8","description":"Intermediação na compra, venda e aluguel de imóveis","risk":1},{"code":"68.22-6","description":"Gestão e administração da propriedade imobiliária","risk":1},{"code":"69.11-7","description":"Atividades jurídicas, exceto cartórios","risk":1},{"code":"69.12-5","description":"Cartórios","risk":1},{"code":"69.20-6","description":"Atividades de contabilidade, consultoria e auditoria contábil e tributária","risk":1},{"code":"70.10-7","description":"Sedes de empresas e unidades administrativas locais","risk":1},{"code":"70.20-4","description":"Atividades de consultoria em gestão empresarial","risk":1},{"code":"71.11-1","description":"Serviços de arquitetura","risk":1},{"code":"71.12-0","description":"Serviços de engenharia","risk":1},{"code":"71.19-7","description":"Atividades técnicas relacionadas à arquitetura e engenharia","risk":1},{"code":"71.20-1","description":"Testes e análises técnicas","risk":2},{"code":"72.10-0","description":"Pesquisa e desenvolvimento experimental em ciências físicas e naturais","risk":2},{"code":"72.20-7","description":"Pesquisa e desenvolvimento experimental em ciências sociais e humanas","risk":2},{"code":"73.11-4","description":"Agências de publicidade","risk":1},{"code":"73.12-2","description":"Agenciamento de espaços para publicidade, exceto em veículos de comunicação","risk":1},{"code":"73.19-0","description":"Atividades de publicidade não especificadas anteriormente","risk":1},{"code":"73.20-3","description":"Pesquisas de mercado e de opinião pública","risk":1},{"code":"74.10-2","description":"Design e decoração de interiores","risk":1},{"code":"74.20-0","description":"Atividades fotográficas e similares","risk":2},{"code":"74.90-1","description":"Atividades profissionais, científicas e técnicas não especificadas anteriormente","risk":1},{"code":"75.00-1","description":"Atividades veterinárias","risk":3},{"code":"77.11-0","description":"Locação de automóveis sem condutor","risk":1},{"code":"77.19-5","description":"Locação de meios de transporte, exceto automóveis, sem condutor","risk":1},{"code":"77.21-7","description":"Aluguel de equipamentos recreativos e esportivos","risk":1},{"code":"77.22-5","description":"Aluguel de fitas de vídeo, DVDs e similares","risk":1},{"code":"77.23-3","description":"Aluguel de objetos do vestuário, jóias e acessórios","risk":1},{"code":"77.29-2","description":"Aluguel de objetos pessoais e domésticos não especificados anteriormente","risk":1},{"code":"77.31-4","description":"Aluguel de máquinas e equipamentos agrícolas sem operador","risk":1},{"code":"77.32-2","description":"Aluguel de máquinas e equipamentos para construção sem operador","risk":1},{"code":"77.33-1","description":"Aluguel de máquinas e equipamentos para escritório","risk":1},{"code":"77.39-0","description":"Aluguel de máquinas e equipamentos não especificados anteriormente","risk":1},{"code":"77.40-3","description":"Gestão de ativos intangíveis não-financeiros","risk":1},{"code":"78.10-8","description":"Seleção e agenciamento de mão-de-obra","risk":1},{"code":"78.20-5","description":"Locação de mão-de-obra temporária","risk":1},{"code":"78.30-2","description":"Fornecimento e gestão de recursos humanos para terceiros","risk":1},{"code":"79.11-2","description":"Agências de viagens","risk":1},{"code":"79.12-1","description":"Operadores turísticos","risk":1},{"code":"79.90-2","description":"Serviços de reservas e outros serviços de turismo não especificados anteriormente","risk":1},{"code":"80.11-1","description":"Atividades de vigilância e segurança privada","risk":3},{"code":"80.12-9","description":"Atividades de transporte de valores","risk":3},{"code":"80.20-0","description":"Atividades de monitoramento de sistemas de segurança","risk":3},{"code":"80.30-7","description":"Atividades de investigação particular","risk":3},{"code":"81.11-7","description":"Serviços combinados para apoio a edifícios, exceto condomínios prediais","risk":2},{"code":"81.12-5","description":"Condomínios prediais","risk":2},{"code":"81.21-4","description":"Limpeza em prédios e em domicílios","risk":3},{"code":"81.22-2","description":"Imunização e controle de pragas urbanas","risk":3},{"code":"81.29-0","description":"Atividades de limpeza não especificadas anteriormente","risk":3},{"code":"81.30-3","description":"Atividades paisagísticas","risk":1},{"code":"82.11-3","description":"Serviços combinados de escritório e apoio administrativo","risk":1},{"code":"82.19-9","description":"Fotocópias, preparação de documentos e outros serviços especializados de apoio administrativo","risk":2},{"code":"82.20-2","description":"Atividades de teleatendimento","risk":2},{"code":"82.30-0","description":"Atividades de organização de eventos, exceto culturais e esportivos","risk":2},{"code":"82.91-1","description":"Atividades de cobrança e informações cadastrais","risk":2},{"code":"82.92-0","description":"Envasamento e empacotamento sob contrato","risk":2},{"code":"82.99-7","description":"Atividades de serviços prestados principalmente às empresas não especificadas anteriormente","risk":2},{"code":"84.11-6","description":"Administração pública em geral","risk":1},{"code":"84.12-4","description":"Regulação das atividades de saúde, educação, serviços culturais e outros serviços sociais","risk":1},{"code":"84.13-2","description":"Regulação das atividades econômicas","risk":1},{"code":"84.21-3","description":"Relações exteriores","risk":1},{"code":"84.22-1","description":"Defesa","risk":1},{"code":"84.23-0","description":"Justiça","risk":1},{"code":"84.24-8","description":"Segurança e ordem pública","risk":1},{"code":"84.25-6","description":"Defesa Civil","risk":1},{"code":"84.30-2","description":"Seguridade social obrigatória","risk":1},{"code":"85.11-2","description":"Educação infantil - creche","risk":2},{"code":"85.12-1","description":"Educação infantil - pré-escola","risk":2},{"code":"85.13-9","description":"Ensino fundamental","risk":2},{"code":"85.20-1","description":"Ensino médio","risk":2},{"code":"85.31-7","description":"Educação superior - graduação","risk":2},{"code":"85.32-5","description":"Educação superior - graduação e pós-graduação","risk":2},{"code":"85.33-3","description":"Educação superior - pós-graduação e extensão","risk":2},{"code":"85.41-4","description":"Educação profissional de nível técnico","risk":2},{"code":"85.42-2","description":"Educação profissional de nível tecnológico","risk":2},{"code":"85.50-3","description":"Atividades de apoio à educação","risk":2},{"code":"85.91-1","description":"Ensino de esportes","risk":2},{"code":"85.92-9","description":"Ensino de arte e cultura","risk":2},{"code":"85.93-7","description":"Ensino de idiomas","risk":2},{"code":"85.99-6","description":"Atividades de ensino não especificadas anteriormente","risk":2},{"code":"86.10-1","description":"Atividades de atendimento hospitalar","risk":3},{"code":"86.21-6","description":"Serviços móveis de atendimento a urgências","risk":3},{"code":"86.22-4","description":"Serviços de remoção de pacientes, exceto os serviços móveis de atendimento a urgências","risk":3},{"code":"86.30-5","description":"Atividades de atenção ambulatorial executadas por médicos e odontólogos","risk":3},{"code":"86.40-2","description":"Atividades de serviços de complementação diagnóstica e terapêutica","risk":3},{"code":"86.50-0","description":"Atividades de profissionais da área de saúde, exceto médicos e odontólogos","risk":2},{"code":"86.60-7","description":"Atividades de apoio à gestão de saúde","risk":1},{"code":"86.90-9","description":"Atividades de atenção à saúde humana não especificadas anteriormente","risk":1},{"code":"87.11-5","description":"Atividades de assistência a idosos, deficientes físicos, imunodeprimidos e convalescentes prestadas em residências coletivas e particulares","risk":1},{"code":"87.12-3","description":"Atividades de fornecimento de infra-estrutura de apoio e assistência a paciente no domicílio","risk":1},{"code":"87.20-4","description":"Atividades de assistência psicossocial e à saúde a portadores de distúrbios psíquicos, deficiência mental e dependência química","risk":1},{"code":"87.30-1","description":"Atividades de assistência social prestadas em residências coletivas e particulares","risk":1},{"code":"88.00-6","description":"Serviços de assistência social sem alojamento","risk":1},{"code":"90.01-9","description":"Artes cênicas, espetáculos e atividades complementares","risk":2},{"code":"90.02-7","description":"Criação artística","risk":2},{"code":"90.03-5","description":"Gestão de espaços para artes cênicas, espetáculos e outras atividades artísticas","risk":1},{"code":"91.01-5","description":"Atividades de bibliotecas e arquivos","risk":2},{"code":"91.02-3","description":"Atividades de museus e de exploração, restauração artística e conservação de lugares e prédios históricos e atrações similares","risk":2},{"code":"91.03-1","description":"Atividades de jardins botânicos, zoológicos, parques nacionais, reservas ecológicas e áreas de proteção ambiental","risk":2},{"code":"92.00-3","description":"Atividades de exploração de jogos de azar e apostas","risk":1},{"code":"93.11-5","description":"Gestão de instalações de esportes","risk":1},{"code":"93.12-3","description":"Clubes sociais, esportivos e similares","risk":2},{"code":"93.13-1","description":"Atividades de condicionamento físico","risk":2},{"code":"93.19-1","description":"Atividades esportivas não especificadas anteriormente","risk":2},{"code":"93.21-2","description":"Parques de diversão e parques temáticos","risk":2},{"code":"93.29-8","description":"Atividades de recreação e lazer não especificadas anteriormente","risk":2},{"code":"94.11-1","description":"Atividades de organizações associativas patronais e empresariais","risk":1},{"code":"94.12-0","description":"Atividades de organizações associativas profissionais","risk":1},{"code":"94.20-1","description":"Atividades de organizações sindicais","risk":1},{"code":"94.30-8","description":"Atividades de associações de defesa de direitos sociais","risk":1},{"code":"94.91-0","description":"Atividades de organizações religiosas","risk":1},{"code":"94.92-8","description":"Atividades de organizações políticas","risk":1},{"code":"94.93-6","description":"Atividades de organizações associativas ligadas à cultura e à arte","risk":1},{"code":"94.99-5","description":"Atividades associativas não especificadas anteriormente","risk":1},{"code":"95.11-8","description":"Reparação e manutenção de computadores e de equipamentos periféricos","risk":3},{"code":"95.12-6","description":"Reparação e manutenção de equipamentos de comunicação","risk":3},{"code":"95.21-5","description":"Reparação e manutenção de equipamentos eletroeletrônicos de uso pessoal e doméstico","risk":3},{"code":"95.29-1","description":"Reparação e manutenção de objetos e equipamentos pessoais e domésticos não especificados anteriormente","risk":3},{"code":"96.01-7","description":"Lavanderias, tinturarias e toalheiros","risk":2},{"code":"96.02-5","description":"Cabeleireiros e outras atividades de tratamento de beleza","risk":2},{"code":"96.03-3","description":"Atividades funerárias e serviços relacionados","risk":2},{"code":"96.09-2","description":"Atividades de serviços pessoais não especificadas anteriormente","risk":2},{"code":"97.00-5","description":"Serviços domésticos","risk":2},{"code":"99.00-8","description":"Organismos internacionais e outras instituições extraterritoriais","risk":1}];
+    const riskByClass = new Map(NR04_DATA.map(item => [onlyDigits(item.code), item]));
+
+    const cnpjForm = document.getElementById("cnpjForm");
+    const cnaeForm = document.getElementById("cnaeForm");
+    const cnpjInput = document.getElementById("cnpjInput");
+    const cnaeInput = document.getElementById("cnaeInput");
+    const result = document.getElementById("result");
+    const empty = document.getElementById("empty");
+    const message = document.getElementById("message");
+    const searchButton = document.getElementById("searchButton");
+
+    function onlyDigits(value) {
+      return String(value || "").replace(/\D/g, "");
+    }
+
+    function formatCnpj(value) {
+      const digits = onlyDigits(value).slice(0, 14);
+      return digits
+        .replace(/^(\d{2})(\d)/, "$1.$2")
+        .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1/$2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
+    }
+
+    function formatCnaeClassFromDigits(value) {
+      const digits = onlyDigits(value);
+      const classDigits = digits.length >= 7 ? digits.slice(0, 5) : digits.slice(0, 5);
+      if (classDigits.length !== 5) return "";
+      return `${classDigits.slice(0, 2)}.${classDigits.slice(2, 4)}-${classDigits.slice(4)}`;
+    }
+
+    function formatCnaeSubclass(value) {
+      const digits = onlyDigits(value);
+      if (digits.length !== 7) return value || "";
+      return `${digits.slice(0, 4)}-${digits.slice(4, 5)}/${digits.slice(5)}`;
+    }
+
+    function setMessage(text, type = "error") {
+      message.innerHTML = text ? `<div class="${type}">${escapeHtml(text)}</div>` : "";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function renderResult(payload) {
+      const risk = payload.risk;
+      const company = payload.company || "Consulta por CNAE";
+      const fantasy = payload.fantasy ? `Nome fantasia: ${payload.fantasy}` : "";
+      const cnpjLine = payload.cnpj ? `CNPJ: ${formatCnpj(payload.cnpj)}` : "";
+      const meta = [fantasy, cnpjLine].filter(Boolean).join(" • ");
+
+      result.innerHTML = `
+        <div class="result-head">
+          <div>
+            <h2 class="company-name">${escapeHtml(company)}</h2>
+            <p class="company-meta">${escapeHtml(meta || "Resultado da consulta direta")}</p>
+          </div>
+          <div class="risk-badge risk-${risk.risk}" aria-label="Grau de risco ${risk.risk}">
+            <span>Grau<br>de Risco</span>
+            <strong>${risk.risk}</strong>
+          </div>
+        </div>
+        <div class="details">
+          <div class="detail">
+            <b>CNAE principal informado</b>
+            <span>${escapeHtml(payload.cnaeFormatted)}</span>
+          </div>
+          <div class="detail">
+            <b>CNAE usado na NR 4</b>
+            <span>${escapeHtml(risk.code)}</span>
+          </div>
+          <div class="detail full">
+            <b>Descrição da atividade principal</b>
+            <span>${escapeHtml(payload.cnaeDescription || risk.description)}</span>
+          </div>
+          <div class="detail full">
+            <b>Denominação correspondente no Quadro I</b>
+            <span>${escapeHtml(risk.description)}</span>
+          </div>
+        </div>
+      `;
+      result.hidden = false;
+      empty.hidden = true;
+      setMessage("");
+    }
+
+    function findRiskByCnae(value) {
+      const classCode = formatCnaeClassFromDigits(value);
+      if (!classCode) return null;
+      return riskByClass.get(onlyDigits(classCode)) || null;
+    }
+
+    async function fetchCnpj(cnpj) {
+      const digits = onlyDigits(cnpj);
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+      if (!response.ok) {
+        throw new Error(response.status === 404 ? "CNPJ não encontrado na BrasilAPI." : "Não foi possível consultar o CNPJ agora.");
+      }
+      return response.json();
+    }
+
+    cnpjInput.addEventListener("input", event => {
+      event.target.value = formatCnpj(event.target.value);
+    });
+
+    cnpjForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const cnpj = onlyDigits(cnpjInput.value);
+      if (cnpj.length !== 14) {
+        setMessage("Informe um CNPJ com 14 dígitos.");
+        return;
+      }
+
+      searchButton.disabled = true;
+      searchButton.textContent = "Consultando";
+      setMessage("");
+
+      try {
+        const data = await fetchCnpj(cnpj);
+        const cnae = String(data.cnae_fiscal || "");
+        const risk = findRiskByCnae(cnae);
+        if (!risk) {
+          throw new Error(`CNAE ${formatCnaeSubclass(cnae)} não localizado no Quadro I da NR 4.`);
+        }
+        renderResult({
+          company: data.razao_social,
+          fantasy: data.nome_fantasia,
+          cnpj,
+          cnaeFormatted: formatCnaeSubclass(cnae),
+          cnaeDescription: data.cnae_fiscal_descricao,
+          risk
+        });
+      } catch (error) {
+        result.hidden = true;
+        empty.hidden = false;
+        setMessage(error.message || "Não foi possível concluir a consulta.");
+      } finally {
+        searchButton.disabled = false;
+        searchButton.textContent = "Consultar";
+      }
+    });
+
+    cnaeForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const value = cnaeInput.value;
+      const risk = findRiskByCnae(value);
+      if (!risk) {
+        setMessage("CNAE não localizado. Informe a subclasse com 7 dígitos ou a classe no formato 00.00-0.");
+        return;
+      }
+      renderResult({
+        cnaeFormatted: onlyDigits(value).length === 7 ? formatCnaeSubclass(value) : risk.code,
+        cnaeDescription: "",
+        risk
+      });
+    });
+  </script>
+</body>
+</html>

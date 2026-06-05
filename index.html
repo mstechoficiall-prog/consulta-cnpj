@@ -1095,7 +1095,9 @@ Quesitos do Juizo</textarea>
     }
 
     function buildRequestedChecks(requestText, fields, official, text) {
-      return parseQuesitos(requestText).map(quesito => {
+      return parseQuesitos(requestText)
+      .filter(quesito => normalizeText(quesito).includes("quesito"))
+      .map(quesito => {
         const normalizedQuesito = normalizeText(quesito);
         let check;
 
@@ -1137,22 +1139,12 @@ Quesitos do Juizo</textarea>
     }
 
     function renderAnalysis({ file, text, fields, official, checks, warning }) {
-      const okCount = checks.filter(item => item.ok).length;
-      const partialCount = checks.filter(item => item.partial).length;
-      const statusClass = okCount === checks.length ? "ok" : okCount > 0 || partialCount > 0 ? "warn" : "bad";
-      const statusText = okCount === checks.length ? "Documento possui todos os quesitos" : okCount > 0 || partialCount > 0 ? "Documento possui parte dos quesitos" : "Documento nao possui os quesitos";
       const sourceCnae = official?.cnae_fiscal ? String(official.cnae_fiscal) : fields.cnae;
-      const officialLines = [
-        official?.razao_social ? `Razao social oficial: ${official.razao_social}` : "",
-        official?.cnae_fiscal ? `CNAE oficial: ${formatCnaeSubclass(String(official.cnae_fiscal))}` : "",
-        official?.cnae_fiscal_descricao ? `Atividade oficial: ${official.cnae_fiscal_descricao}` : ""
-      ].filter(Boolean);
 
       analysisResult.innerHTML = `
         <div class="analysis-head">
-          <h2>Analise dos quesitos do documento</h2>
-          <p>${escapeHtml(file.name)} - ${Math.max(0, text.length).toLocaleString("pt-BR")} caracteres lidos.</p>
-          <div class="analysis-status ${statusClass}">${escapeHtml(statusText)}</div>
+          <h2>Informacoes extraidas</h2>
+          <p>${escapeHtml(file.name)}</p>
           ${warning ? `<p>${escapeHtml(warning)}</p>` : ""}
         </div>
         <div class="details">
@@ -1177,24 +1169,12 @@ Quesitos do Juizo</textarea>
             <span>${escapeHtml(fields.process.claimantRole || "Nao encontrada")}</span>
           </div>
           <div class="detail">
-            <b>CNPJ identificado</b>
-            <span>${fields.cnpj ? escapeHtml(formatCnpj(fields.cnpj)) : "Nao encontrado"}</span>
-          </div>
-          <div class="detail">
             <b>Classificacao Nacional de atividade</b>
             <span>${sourceCnae ? escapeHtml(formatCnaeSubclass(sourceCnae)) : "Nao encontrado"}</span>
           </div>
           <div class="detail">
-            <b>Grau calculado</b>
+            <b>Grau de risco</b>
             <span>${fields.calculatedRisk ? `Grau ${fields.calculatedRisk.risk}` : "Nao calculado"}</span>
-          </div>
-          <div class="detail">
-            <b>Grau declarado</b>
-            <span>${fields.declaredRisk ? `Grau ${escapeHtml(fields.declaredRisk)}` : "Nao informado"}</span>
-          </div>
-          <div class="detail full">
-            <b>Dados cruzados da empresa</b>
-            <span>${escapeHtml(officialLines.join(" | ") || "Sem dados oficiais cruzados. Informe um CNPJ valido no documento para enriquecer a analise.")}</span>
           </div>
         </div>
         <div class="check-list">
@@ -1204,10 +1184,6 @@ Quesitos do Juizo</textarea>
               <span><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</span>
             </div>
           `).join("")}
-          <div class="check-item">
-            <b>Trecho lido</b>
-            <pre class="doc-preview">${escapeHtml(text.slice(0, 1600) || "Nenhum texto extraido.")}</pre>
-          </div>
         </div>
       `;
       analysisResult.hidden = false;

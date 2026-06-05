@@ -570,12 +570,16 @@
             <form id="documentForm">
               <div class="ai-grid">
                 <div>
-                  <label for="documentInput">Analisar documento com IA local</label>
+                  <label for="documentInput">Documento principal</label>
                   <input id="documentInput" class="file-input" name="documento" type="file" accept=".pdf,.docx,.txt,.csv,.json,.html,.htm,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
                 </div>
-                <button id="analyzeButton" type="submit">Analisar documento</button>
+                <div>
+                  <label for="extraDocumentInput">Outro documento</label>
+                  <input id="extraDocumentInput" class="file-input" name="documento_extra" type="file" accept=".pdf,.docx,.txt,.csv,.json,.html,.htm,text/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                </div>
               </div>
-              <p class="hint">A analise extrai somente as informacoes principais do processo e da empresa reclamada.</p>
+              <button id="analyzeButton" type="submit" style="margin-top: 12px;">Analisar documento</button>
+              <p class="hint">A analise extrai as informacoes principais. No segundo documento, busca Eximio, data, horario e local, e confere se o Autor/Reclamante e o mesmo.</p>
             </form>
           </div>
           <div id="message" aria-live="polite"></div>
@@ -614,6 +618,7 @@
     const searchButton = document.getElementById("searchButton");
     const documentForm = document.getElementById("documentForm");
     const documentInput = document.getElementById("documentInput");
+    const extraDocumentInput = document.getElementById("extraDocumentInput");
     const analyzeButton = document.getElementById("analyzeButton");
 
     function onlyDigits(value) {
@@ -893,6 +898,55 @@
       };
     }
 
+    function normalizePersonName(value) {
+      return normalizeText(value)
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\b(?:sr|sra|dr|dra|doutor|doutora|reclamante|autor|autora)\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function compareClaimants(mainClaimant, extraClaimant) {
+      const first = normalizePersonName(mainClaimant);
+      const second = normalizePersonName(extraClaimant);
+      if (!first || !second) return "Nao foi possivel conferir";
+      return first === second || first.includes(second) || second.includes(first)
+        ? "Mesmo Autor/Reclamante"
+        : "Autor/Reclamante divergente";
+    }
+
+    function extractExtraDocumentInfo(text, mainClaimant) {
+      const firstPageText = getFirstPageText(text);
+      const source = firstPageText || text;
+      const process = extractProcessInfo(text);
+      const eximio = extractFirstMatch(source, [
+        /(Ex[iÃ­]mio(?:\(a\))?\s+Senhor(?:\(a\))?\s+Doutor(?:\(a\))?\s+Juiz(?:\(a\))?[^\n\r]+)/i,
+        /(Excelent[iÃ­]ssimo(?:\(a\))?\s+Senhor(?:\(a\))?[^\n\r]+)/i
+      ]);
+      const date = extractFirstMatch(text, [
+        /\b(\d{2}\/\d{2}\/\d{4})\b/,
+        /\b(\d{1,2}\s+de\s+[a-zÃ§]+(?:\s+de)?\s+\d{4})\b/i
+      ]);
+      const time = extractFirstMatch(text, [
+        /\b(\d{1,2}h\d{0,2})\b/i,
+        /\b(\d{1,2}:\d{2})\b/
+      ]);
+      const location = extractFirstMatch(text, [
+        /local\s*[:\-]\s*([^\n\r]+)/i,
+        /endere[cÃ§]o\s*[:\-]\s*([^\n\r]+)/i,
+        /(?:dilig[eÃª]ncia|per[iÃ­]cia).*?(?:no|na|em)\s+endere[cÃ§]o\s+([^\n\r.]+)/i
+      ]);
+
+      return {
+        eximio,
+        date,
+        time,
+        location,
+        claimant: process.claimant,
+        claimantCheck: compareClaimants(mainClaimant, process.claimant)
+      };
+    }
+
     function parseQuesitos(requestText) {
       const lines = String(requestText || "")
         .split(/\r?\n|;/)
@@ -1155,8 +1209,39 @@
       });
     }
 
-    function renderAnalysis({ file, text, fields, official, warning }) {
+    function renderAnalysis({ file, text, fields, official, extraInfo, warning }) {
       const sourceCnae = official?.cnae_fiscal ? String(official.cnae_fiscal) : fields.cnae;
+      const extraBlock = extraInfo ? `
+        <div class="analysis-head">
+          <h2>Outro documento</h2>
+        </div>
+        <div class="details">
+          <div class="detail">
+            <b>Eximio</b>
+            <span>${escapeHtml(extraInfo.eximio || "Nao encontrado")}</span>
+          </div>
+          <div class="detail">
+            <b>Data</b>
+            <span>${escapeHtml(extraInfo.date || "Nao encontrada")}</span>
+          </div>
+          <div class="detail">
+            <b>Horario</b>
+            <span>${escapeHtml(extraInfo.time || "Nao encontrado")}</span>
+          </div>
+          <div class="detail">
+            <b>Local</b>
+            <span>${escapeHtml(extraInfo.location || "Nao encontrado")}</span>
+          </div>
+          <div class="detail">
+            <b>Autor/Reclamante no outro documento</b>
+            <span>${escapeHtml(extraInfo.claimant || "Nao encontrado")}</span>
+          </div>
+          <div class="detail">
+            <b>Conferencia</b>
+            <span>${escapeHtml(extraInfo.claimantCheck)}</span>
+          </div>
+        </div>
+      ` : "";
 
       analysisResult.innerHTML = `
         <div class="analysis-head">
@@ -1198,6 +1283,7 @@
             <span>${fields.calculatedRisk ? `Grau ${fields.calculatedRisk.risk}` : "Nao calculado"}</span>
           </div>
         </div>
+        ${extraBlock}
       `;
       analysisResult.hidden = false;
       empty.hidden = true;
@@ -1262,6 +1348,7 @@
     documentForm.addEventListener("submit", async event => {
       event.preventDefault();
       const file = documentInput.files && documentInput.files[0];
+      const extraFile = extraDocumentInput.files && extraDocumentInput.files[0];
       if (!file) {
         setMessage("Selecione um documento para analisar.");
         return;
@@ -1290,7 +1377,12 @@
 
         const cnaeForRisk = official?.cnae_fiscal ? String(official.cnae_fiscal) : fields.cnae;
         fields.calculatedRisk = cnaeForRisk ? findRiskByCnae(cnaeForRisk) : null;
-        renderAnalysis({ file, text, fields, official, warning });
+        let extraInfo = null;
+        if (extraFile) {
+          const extraText = await extractDocumentText(extraFile);
+          extraInfo = extractExtraDocumentInfo(extraText, fields.process.claimant);
+        }
+        renderAnalysis({ file, text, fields, official, extraInfo, warning });
       } catch (error) {
         analysisResult.hidden = true;
         setMessage(error.message || "Nao foi possivel analisar o documento.");

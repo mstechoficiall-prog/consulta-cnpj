@@ -763,7 +763,7 @@ Quesitos do Juizo</textarea>
         const content = await page.getTextContent();
         pages.push(content.items.map(item => item.str).join(" "));
       }
-      return pages.join("\n");
+      return pages.join("\n\f\n");
     }
 
     async function extractDocxText(file) {
@@ -821,29 +821,38 @@ Quesitos do Juizo</textarea>
         .trim();
     }
 
+    function getFirstPageText(text) {
+      const fullText = String(text || "");
+      const explicitFirstPage = fullText.split("\f")[0];
+      return explicitFirstPage.slice(0, 7000);
+    }
+
     function extractProcessInfo(text) {
-      const processNumber = extractFirstMatch(text, [
+      const processSource = getFirstPageText(text) || text;
+      const processNumber = extractFirstMatch(processSource, [
         /a[cÃ§][aÃ£]o\s+trabalhista[^\n\r]*[\n\r\s]+(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})/i,
         /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/,
         /processo(?:\s+n[Âºo.]*)?\s*[:\-]?\s*([\d.\-\/]{15,30})/i
       ]);
-      const region = extractFirstMatch(text, [
+      const region = extractFirstMatch(processSource, [
         /\bTRT\s*(?:da)?\s*(\d{1,2})[Âªa]?\s*Regi[aÃ£]o\b/i,
         /\bTribunal\s+Regional\s+do\s+Trabalho\s+da\s+(\d{1,2})[Âªa]?\s*Regi[aÃ£]o\b/i,
         /\b(\d{1,2})[Âªa]?\s*Regi[aÃ£]o\b/i
       ]);
-      const court = extractFirstMatch(text, [
+      const court = extractFirstMatch(processSource, [
         /(\d{1,3}[Âªa]?\s+Vara\s+do\s+Trabalho\s+de\s+[^\n\r]+)/i,
         /(Vara\s+do\s+Trabalho\s+de\s+[^\n\r]+)/i,
         /(Posto\s+Avan[cÃ§]ado\s+da\s+Justi[cÃ§]a\s+do\s+Trabalho\s+de\s+[^\n\r]+)/i
       ]);
-      const claimant = cleanExtractedName(extractFirstMatch(text, [
+      const claimant = cleanExtractedName(extractFirstMatch(processSource, [
         /reclamante\s*[:\-]\s*([^\n\r]+)/i,
         /autor(?:a)?\s*[:\-]\s*([^\n\r]+)/i,
         /parte\s+autora\s*[:\-]\s*([^\n\r]+)/i
       ]));
-      const defendant = cleanExtractedName(extractFirstMatch(text, [
+      const defendant = cleanExtractedName(extractFirstMatch(processSource, [
         /reclamad[ao]\s*[:\-]\s*([^\n\r]+)/i,
+        /r[eé]u\s*[:\-]\s*([^\n\r]+)/i,
+        /reu\s*[:\-]\s*([^\n\r]+)/i,
         /r[eÃ©]\s*[:\-]\s*([^\n\r]+)/i,
         /parte\s+r[eÃ©]\s*[:\-]\s*([^\n\r]+)/i
       ]));

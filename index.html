@@ -915,19 +915,37 @@
         : "Autor/Reclamante divergente";
     }
 
+    function extractEximioLine(text) {
+      const lines = String(text || "")
+        .split(/\r?\n/)
+        .map(line => line.replace(/\s+/g, " ").trim())
+        .filter(Boolean);
+      const found = lines.find(line => /ex[ií]mio|excelent[ií]ssimo/i.test(line) && /ju[ií]z|vara|trabalho/i.test(line));
+      if (found) return found;
+      return extractFirstMatch(text, [
+        /(Ex[ií]mio(?:\(a\))?\s+Senhor(?:\(a\))?\s+Doutor(?:\(a\))?\s+Juiz(?:\(a\))?\s+(?:da|do)\s+[^\n\r.]+\.?)/i,
+        /(Ex[ií]mio(?:\(a\))?\s+Senhor(?:\(a\))?\s+Doutor(?:\(a\))?\s+Juiz(?:\(a\))?[^\n\r]+)/i,
+        /(Excelent[ií]ssimo(?:\(a\))?\s+Senhor(?:\(a\))?[^\n\r]+)/i
+      ]);
+    }
+
     function extractExtraDocumentInfo(text, mainClaimant) {
       const firstPageText = getFirstPageText(text);
       const source = firstPageText || text;
       const process = extractProcessInfo(text);
-      const eximio = extractFirstMatch(source, [
+      const eximio = extractEximioLine(source) || extractFirstMatch(source, [
         /(Ex[iÃ­]mio(?:\(a\))?\s+Senhor(?:\(a\))?\s+Doutor(?:\(a\))?\s+Juiz(?:\(a\))?[^\n\r]+)/i,
         /(Excelent[iÃ­]ssimo(?:\(a\))?\s+Senhor(?:\(a\))?[^\n\r]+)/i
       ]);
       const date = extractFirstMatch(text, [
+        /data\s*[:\-]\s*(\d{1,2}\s+de\s+[^;,\n\r\d]+(?:\s+de)?\s+\d{4})/i,
+        /data\s*[:\-]\s*(\d{2}\/\d{2}\/\d{4})/i,
         /\b(\d{2}\/\d{2}\/\d{4})\b/,
         /\b(\d{1,2}\s+de\s+[a-zÃ§]+(?:\s+de)?\s+\d{4})\b/i
       ]);
       const time = extractFirstMatch(text, [
+        /hor[aÃ¡]rio\s*[:\-]\s*(\d{1,2}[:h]\d{2}\s*(?:hs?|horas?)?)/i,
+        /hor[aÃ¡]rio\s*[:\-]\s*(\d{1,2}\s*(?:hs?|horas?))/i,
         /\b(\d{1,2}h\d{0,2})\b/i,
         /\b(\d{1,2}:\d{2})\b/
       ]);

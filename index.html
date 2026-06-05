@@ -581,12 +581,11 @@
                 </div>
                 <button id="analyzeButton" type="submit">Analisar documento</button>
               </div>
-              <label for="requestInput" style="margin-top: 12px;">Quesitos que o documento deve possuir</label>
-              <textarea id="requestInput" placeholder="Informe um quesito por linha. Ex.: CNPJ, razao social, CNAE principal, assinatura do responsavel.">CNPJ
-Razao social
-CNAE principal
-Grau de risco NR 4</textarea>
-              <p class="hint">Informe um quesito por linha. A analise extrai o texto do documento e verifica se cada quesito aparece ou pode ser calculado pelos dados encontrados.</p>
+              <label for="requestInput" style="margin-top: 12px;">Quesitos que deseja localizar</label>
+              <textarea id="requestInput" placeholder="Informe um quesito por linha.">Quesitos do Juizo
+Quesitos da Reclamada
+Quesitos do Reclamante</textarea>
+              <p class="hint">A analise procura as secoes de quesitos no documento. Quando encontrar, mostra o conteudo identificado; quando nao encontrar, informa que nao apresentou quesitos.</p>
             </form>
           </div>
           <div id="message" aria-live="polite"></div>
@@ -822,7 +821,7 @@ Grau de risco NR 4</textarea>
         .split(/\r?\n|;/)
         .map(item => item.replace(/^[-*]\s*/, "").trim())
         .filter(Boolean);
-      return lines.length ? lines : ["CNPJ", "Razao social", "CNAE principal", "Grau de risco NR 4"];
+      return lines.length ? lines : ["Quesitos do Juizo", "Quesitos da Reclamada", "Quesitos do Reclamante"];
     }
 
     function hasAnyTerm(normalizedText, terms) {
@@ -854,12 +853,81 @@ Grau de risco NR 4</textarea>
       return { ok: false, partial: false, value: "Nao localizado no texto extraido" };
     }
 
+    function isQuesitoHeading(line) {
+      const normalizedLine = normalizeText(line);
+      return normalizedLine.includes("quesito")
+        && (normalizedLine.includes("juizo")
+          || normalizedLine.includes("reclamada")
+          || normalizedLine.includes("reclamante")
+          || normalizedLine.includes("autor")
+          || normalizedLine.includes("requerente")
+          || normalizedLine.includes("empresa")
+          || normalizedLine.includes("reclamado"));
+    }
+
+    function getQuesitoTarget(quesito) {
+      const normalizedQuesito = normalizeText(quesito);
+      if (normalizedQuesito.includes("juizo") || normalizedQuesito.includes("juiz")) {
+        return { label: "Quesitos do Juizo", terms: ["juizo", "juiz"] };
+      }
+      if (normalizedQuesito.includes("reclamada") || normalizedQuesito.includes("reclamado") || normalizedQuesito.includes("empresa")) {
+        return { label: "Quesitos da Reclamada", terms: ["reclamada", "reclamado", "empresa"] };
+      }
+      if (normalizedQuesito.includes("reclamante") || normalizedQuesito.includes("autor") || normalizedQuesito.includes("requerente")) {
+        return { label: "Quesitos do Reclamante", terms: ["reclamante", "autor", "requerente"] };
+      }
+      return null;
+    }
+
+    function extractQuesitoSection(text, quesito) {
+      const target = getQuesitoTarget(quesito);
+      if (!target) return null;
+
+      const lines = String(text || "").split(/\r?\n/);
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index].trim();
+        const normalizedLine = normalizeText(line);
+        const isTargetLine = normalizedLine.includes("quesito") && target.terms.some(term => normalizedLine.includes(term));
+        if (!isTargetLine) continue;
+
+        const sectionLines = [];
+        const sameLineContent = line
+          .replace(/^\s*(?:\d+[\).\-\s]*)?quesitos?\s*(?:do|da|de|dos|das)?\s*(?:juizo|juiz|reclamada|reclamado|reclamante|autor|requerente|empresa)?\s*[:\-\u2013]?\s*/i, "")
+          .trim();
+        if (sameLineContent) sectionLines.push(sameLineContent);
+
+        for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex += 1) {
+          const nextLine = lines[nextIndex].trim();
+          if (nextLine && isQuesitoHeading(nextLine)) break;
+          if (/^(respostas?|conclus[aã]o|manifest[aã]o|observa[cç][aã]o|anexos?)\b/i.test(nextLine)) break;
+          if (nextLine) sectionLines.push(nextLine);
+          if (sectionLines.join(" ").length > 1800) break;
+        }
+
+        const value = sectionLines.join(" ").replace(/\s+/g, " ").trim();
+        return {
+          ok: true,
+          partial: false,
+          value: value || "Secao localizada, mas sem texto extraido logo abaixo"
+        };
+      }
+
+      return {
+        ok: false,
+        partial: false,
+        value: "Nao apresentou quesitos"
+      };
+    }
+
     function buildRequestedChecks(requestText, fields, official, text) {
       return parseQuesitos(requestText).map(quesito => {
         const normalizedQuesito = normalizeText(quesito);
         let check;
 
-        if (normalizedQuesito.includes("cnpj")) {
+        const legalQuesitos = extractQuesitoSection(text, quesito);
+        if (legalQuesitos) {
+          check = legalQuesitos;
+        } else if (normalizedQuesito.includes("cnpj")) {
           check = { ok: fields.cnpj.length === 14, partial: false, value: fields.cnpj ? formatCnpj(fields.cnpj) : "Nao encontrado" };
         } else if (hasAnyTerm(normalizedQuesito, ["razao social", "nome empresarial", "empresa"])) {
           check = { ok: Boolean(fields.company || official?.razao_social), partial: false, value: fields.company || official?.razao_social || "Nao encontrada" };

@@ -581,12 +581,12 @@
                 </div>
                 <button id="analyzeButton" type="submit">Analisar documento</button>
               </div>
-              <label for="requestInput" style="margin-top: 12px;">Informacoes solicitadas</label>
-              <textarea id="requestInput" placeholder="Ex.: verificar se o documento informa CNPJ, razao social, CNAE principal e grau de risco NR 4.">CNPJ
+              <label for="requestInput" style="margin-top: 12px;">Quesitos que o documento deve possuir</label>
+              <textarea id="requestInput" placeholder="Informe um quesito por linha. Ex.: CNPJ, razao social, CNAE principal, assinatura do responsavel.">CNPJ
 Razao social
 CNAE principal
 Grau de risco NR 4</textarea>
-              <p class="hint">A analise roda no proprio navegador. Para PDF e DOCX, o site extrai o texto do arquivo e confere automaticamente os campos encontrados.</p>
+              <p class="hint">Informe um quesito por linha. A analise extrai o texto do documento e verifica se cada quesito aparece ou pode ser calculado pelos dados encontrados.</p>
             </form>
           </div>
           <div id="message" aria-live="polite"></div>
@@ -817,26 +817,76 @@ Grau de risco NR 4</textarea>
       };
     }
 
-    function buildRequestedChecks(requestText, fields, official) {
-      const request = normalizeText(requestText);
-      const requested = [
-        { label: "CNPJ", wanted: request.includes("cnpj"), ok: fields.cnpj.length === 14, value: fields.cnpj ? formatCnpj(fields.cnpj) : "Nao encontrado" },
-        { label: "Razao social", wanted: request.includes("razao") || request.includes("nome empresarial") || request.includes("empresa"), ok: Boolean(fields.company || official?.razao_social), value: fields.company || official?.razao_social || "Nao encontrada" },
-        { label: "CNAE principal", wanted: request.includes("cnae"), ok: Boolean(fields.cnae || official?.cnae_fiscal), value: fields.cnae ? formatCnaeSubclass(fields.cnae) : (official?.cnae_fiscal ? formatCnaeSubclass(String(official.cnae_fiscal)) : "Nao encontrado") },
-        { label: "Grau de risco NR 4", wanted: request.includes("grau") || request.includes("risco") || request.includes("nr 4") || request.includes("nr04"), ok: Boolean(fields.calculatedRisk), value: fields.calculatedRisk ? `Grau ${fields.calculatedRisk.risk} - ${fields.calculatedRisk.description}` : "Nao calculado" }
-      ].filter(item => item.wanted);
+    function parseQuesitos(requestText) {
+      const lines = String(requestText || "")
+        .split(/\r?\n|;/)
+        .map(item => item.replace(/^[-*]\s*/, "").trim())
+        .filter(Boolean);
+      return lines.length ? lines : ["CNPJ", "Razao social", "CNAE principal", "Grau de risco NR 4"];
+    }
 
-      return requested.length ? requested : [
-        { label: "CNPJ", ok: fields.cnpj.length === 14, value: fields.cnpj ? formatCnpj(fields.cnpj) : "Nao encontrado" },
-        { label: "CNAE principal", ok: Boolean(fields.cnae || official?.cnae_fiscal), value: fields.cnae ? formatCnaeSubclass(fields.cnae) : (official?.cnae_fiscal ? formatCnaeSubclass(String(official.cnae_fiscal)) : "Nao encontrado") },
-        { label: "Grau de risco NR 4", ok: Boolean(fields.calculatedRisk), value: fields.calculatedRisk ? `Grau ${fields.calculatedRisk.risk} - ${fields.calculatedRisk.description}` : "Nao calculado" }
-      ];
+    function hasAnyTerm(normalizedText, terms) {
+      return terms.some(term => normalizedText.includes(normalizeText(term)));
+    }
+
+    function buildTextEvidence(text, quesito) {
+      const normalizedText = normalizeText(text);
+      const words = normalizeText(quesito)
+        .split(/\s+/)
+        .filter(word => word.length > 2 && !["deve", "possui", "possuir", "contem", "consta", "documento", "informar", "informa"].includes(word));
+      if (!words.length) {
+        return { ok: false, partial: false, value: "Nao localizado no texto extraido" };
+      }
+
+      const matchedWords = words.filter(word => normalizedText.includes(word));
+      const phraseIndex = normalizedText.indexOf(words.join(" "));
+      if (phraseIndex >= 0) {
+        const start = Math.max(0, phraseIndex - 70);
+        const end = Math.min(text.length, phraseIndex + quesito.length + 120);
+        return { ok: true, partial: false, value: text.slice(start, end).replace(/\s+/g, " ").trim() };
+      }
+      if (matchedWords.length === words.length) {
+        return { ok: true, partial: false, value: `Termos encontrados: ${matchedWords.join(", ")}` };
+      }
+      if (matchedWords.length > 0) {
+        return { ok: false, partial: true, value: `Encontrado parcialmente: ${matchedWords.join(", ")}` };
+      }
+      return { ok: false, partial: false, value: "Nao localizado no texto extraido" };
+    }
+
+    function buildRequestedChecks(requestText, fields, official, text) {
+      return parseQuesitos(requestText).map(quesito => {
+        const normalizedQuesito = normalizeText(quesito);
+        let check;
+
+        if (normalizedQuesito.includes("cnpj")) {
+          check = { ok: fields.cnpj.length === 14, partial: false, value: fields.cnpj ? formatCnpj(fields.cnpj) : "Nao encontrado" };
+        } else if (hasAnyTerm(normalizedQuesito, ["razao social", "nome empresarial", "empresa"])) {
+          check = { ok: Boolean(fields.company || official?.razao_social), partial: false, value: fields.company || official?.razao_social || "Nao encontrada" };
+        } else if (normalizedQuesito.includes("cnae")) {
+          check = { ok: Boolean(fields.cnae || official?.cnae_fiscal), partial: false, value: fields.cnae ? formatCnaeSubclass(fields.cnae) : (official?.cnae_fiscal ? formatCnaeSubclass(String(official.cnae_fiscal)) : "Nao encontrado") };
+        } else if (hasAnyTerm(normalizedQuesito, ["grau de risco", "risco nr", "nr 4", "nr04"])) {
+          check = { ok: Boolean(fields.calculatedRisk), partial: Boolean(fields.declaredRisk && !fields.calculatedRisk), value: fields.calculatedRisk ? `Grau ${fields.calculatedRisk.risk} - ${fields.calculatedRisk.description}` : (fields.declaredRisk ? `Grau declarado ${fields.declaredRisk}, sem calculo pela NR 4` : "Nao calculado") };
+        } else {
+          check = buildTextEvidence(text, quesito);
+        }
+
+        const status = check.ok ? "Conforme" : check.partial ? "Parcial" : "Pendente";
+        return {
+          label: quesito,
+          ok: check.ok,
+          partial: check.partial,
+          status,
+          value: check.value
+        };
+      });
     }
 
     function renderAnalysis({ file, text, fields, official, checks, warning }) {
       const okCount = checks.filter(item => item.ok).length;
-      const statusClass = okCount === checks.length ? "ok" : okCount > 0 ? "warn" : "bad";
-      const statusText = okCount === checks.length ? "Conforme com os itens solicitados" : okCount > 0 ? "Parcialmente conforme" : "Nao conforme";
+      const partialCount = checks.filter(item => item.partial).length;
+      const statusClass = okCount === checks.length ? "ok" : okCount > 0 || partialCount > 0 ? "warn" : "bad";
+      const statusText = okCount === checks.length ? "Documento possui todos os quesitos" : okCount > 0 || partialCount > 0 ? "Documento possui parte dos quesitos" : "Documento nao possui os quesitos";
       const sourceCnae = official?.cnae_fiscal ? String(official.cnae_fiscal) : fields.cnae;
       const officialLines = [
         official?.razao_social ? `Razao social oficial: ${official.razao_social}` : "",
@@ -846,7 +896,7 @@ Grau de risco NR 4</textarea>
 
       analysisResult.innerHTML = `
         <div class="analysis-head">
-          <h2>Analise inteligente do documento</h2>
+          <h2>Analise dos quesitos do documento</h2>
           <p>${escapeHtml(file.name)} - ${Math.max(0, text.length).toLocaleString("pt-BR")} caracteres lidos.</p>
           <div class="analysis-status ${statusClass}">${escapeHtml(statusText)}</div>
           ${warning ? `<p>${escapeHtml(warning)}</p>` : ""}
@@ -876,7 +926,7 @@ Grau de risco NR 4</textarea>
         <div class="check-list">
           ${checks.map(item => `
             <div class="check-item">
-              <b>${item.ok ? "Conforme" : "Pendente"}</b>
+              <b>${escapeHtml(item.status)}</b>
               <span><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</span>
             </div>
           `).join("")}
@@ -977,7 +1027,7 @@ Grau de risco NR 4</textarea>
 
         const cnaeForRisk = official?.cnae_fiscal ? String(official.cnae_fiscal) : fields.cnae;
         fields.calculatedRisk = cnaeForRisk ? findRiskByCnae(cnaeForRisk) : null;
-        const checks = buildRequestedChecks(requestInput.value, fields, official);
+        const checks = buildRequestedChecks(requestInput.value, fields, official, text);
         renderAnalysis({ file, text, fields, official, checks, warning });
       } catch (error) {
         analysisResult.hidden = true;

@@ -806,6 +806,7 @@ Quesitos do Juizo</textarea>
 
     function extractProcessInfo(text) {
       const processNumber = extractFirstMatch(text, [
+        /a[cÃ§][aÃ£]o\s+trabalhista[^\n\r]*[\n\r\s]+(\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4})/i,
         /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/,
         /processo(?:\s+n[Âºo.]*)?\s*[:\-]?\s*([\d.\-\/]{15,30})/i
       ]);

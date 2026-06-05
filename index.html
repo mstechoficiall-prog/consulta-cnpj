@@ -582,9 +582,16 @@
                 <button id="analyzeButton" type="submit">Analisar documento</button>
               </div>
               <label for="requestInput" style="margin-top: 12px;">Quesitos que deseja localizar</label>
-              <textarea id="requestInput" placeholder="Informe um quesito por linha.">Quesitos do Juizo
+              <textarea id="requestInput" placeholder="Informe um quesito por linha.">Numero do processo
+Regiao e vara da justica
+Nome do Reclamante
+Nome da Reclamada
+Grau de Risco
+Classificacao Nacional de atividade da empresa
+Funcao do reclamante
+Quesitos do Reclamante
 Quesitos da Reclamada
-Quesitos do Reclamante</textarea>
+Quesitos do Juizo</textarea>
               <p class="hint">A analise procura as secoes de quesitos no documento. Quando encontrar, mostra o conteudo identificado; quando nao encontrar, informa que nao apresentou quesitos.</p>
             </form>
           </div>
@@ -789,6 +796,57 @@ Quesitos do Reclamante</textarea>
       return "";
     }
 
+    function cleanExtractedName(value) {
+      return String(value || "")
+        .replace(/\s{2,}/g, " ")
+        .replace(/\s+(?:CPF|CNPJ|RG|PIS|CTPS|OAB|Endere[cÃ§]o|Advogado|Procurador)\b.*$/i, "")
+        .replace(/[;,.:\-\u2013]+$/g, "")
+        .trim();
+    }
+
+    function extractProcessInfo(text) {
+      const processNumber = extractFirstMatch(text, [
+        /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/,
+        /processo(?:\s+n[Âºo.]*)?\s*[:\-]?\s*([\d.\-\/]{15,30})/i
+      ]);
+      const region = extractFirstMatch(text, [
+        /\bTRT\s*(?:da)?\s*(\d{1,2})[Âªa]?\s*Regi[aÃ£]o\b/i,
+        /\bTribunal\s+Regional\s+do\s+Trabalho\s+da\s+(\d{1,2})[Âªa]?\s*Regi[aÃ£]o\b/i,
+        /\b(\d{1,2})[Âªa]?\s*Regi[aÃ£]o\b/i
+      ]);
+      const court = extractFirstMatch(text, [
+        /(\d{1,3}[Âªa]?\s+Vara\s+do\s+Trabalho\s+de\s+[^\n\r]+)/i,
+        /(Vara\s+do\s+Trabalho\s+de\s+[^\n\r]+)/i,
+        /(Posto\s+Avan[cÃ§]ado\s+da\s+Justi[cÃ§]a\s+do\s+Trabalho\s+de\s+[^\n\r]+)/i
+      ]);
+      const claimant = cleanExtractedName(extractFirstMatch(text, [
+        /reclamante\s*[:\-]\s*([^\n\r]+)/i,
+        /autor(?:a)?\s*[:\-]\s*([^\n\r]+)/i,
+        /parte\s+autora\s*[:\-]\s*([^\n\r]+)/i
+      ]));
+      const defendant = cleanExtractedName(extractFirstMatch(text, [
+        /reclamad[ao]\s*[:\-]\s*([^\n\r]+)/i,
+        /r[eÃ©]\s*[:\-]\s*([^\n\r]+)/i,
+        /parte\s+r[eÃ©]\s*[:\-]\s*([^\n\r]+)/i
+      ]));
+      const claimantRole = extractFirstMatch(text, [
+        /fun[cÃ§][aÃ£]o(?:\s+do\s+reclamante)?\s*[:\-]\s*([^\n\r]+)/i,
+        /cargo(?:\s+do\s+reclamante)?\s*[:\-]\s*([^\n\r]+)/i,
+        /ocupava\s+a\s+fun[cÃ§][aÃ£]o\s+de\s+([^\n\r.,;]+)/i,
+        /exercia\s+a\s+fun[cÃ§][aÃ£]o\s+de\s+([^\n\r.,;]+)/i,
+        /admitid[ao]\s+para\s+(?:a\s+)?fun[cÃ§][aÃ£]o\s+de\s+([^\n\r.,;]+)/i
+      ]);
+
+      return {
+        processNumber,
+        region: region ? `${region} Regiao` : "",
+        court: court.replace(/\s{2,}/g, " ").trim(),
+        claimant,
+        defendant,
+        claimantRole: claimantRole.replace(/[;,.:\-\u2013]+$/g, "").trim()
+      };
+    }
+
     function extractDocumentFields(text) {
       const cnpj = extractFirstMatch(text, [
         /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/,
@@ -812,7 +870,8 @@ Quesitos do Reclamante</textarea>
         cnpj: onlyDigits(cnpj),
         cnae: onlyDigits(cnae),
         company,
-        declaredRisk: risk
+        declaredRisk: risk,
+        process: extractProcessInfo(text)
       };
     }
 
@@ -950,14 +1009,25 @@ Quesitos do Reclamante</textarea>
         const normalizedQuesito = normalizeText(quesito);
         let check;
 
-        const legalQuesitos = extractQuesitoSection(text, quesito);
+        const legalQuesitos = normalizedQuesito.includes("quesito") ? extractQuesitoSection(text, quesito) : null;
         if (legalQuesitos) {
           check = legalQuesitos;
+        } else if (hasAnyTerm(normalizedQuesito, ["numero do processo", "processo"])) {
+          check = { ok: Boolean(fields.process.processNumber), partial: false, value: fields.process.processNumber || "Nao encontrado" };
+        } else if (hasAnyTerm(normalizedQuesito, ["regiao", "vara da justica", "vara do trabalho", "justica"])) {
+          const regionCourt = [fields.process.region, fields.process.court].filter(Boolean).join(" - ");
+          check = { ok: Boolean(regionCourt), partial: Boolean(fields.process.region || fields.process.court), value: regionCourt || "Nao encontrado" };
+        } else if (hasAnyTerm(normalizedQuesito, ["nome do reclamante", "reclamante"])) {
+          check = { ok: Boolean(fields.process.claimant), partial: false, value: fields.process.claimant || "Nao encontrado" };
+        } else if (hasAnyTerm(normalizedQuesito, ["nome da reclamada", "reclamada"])) {
+          check = { ok: Boolean(fields.process.defendant || official?.razao_social || fields.company), partial: false, value: fields.process.defendant || official?.razao_social || fields.company || "Nao encontrada" };
+        } else if (hasAnyTerm(normalizedQuesito, ["funcao do reclamante", "função do reclamante", "cargo do reclamante", "funcao", "função", "cargo"])) {
+          check = { ok: Boolean(fields.process.claimantRole), partial: false, value: fields.process.claimantRole || "Nao encontrada" };
         } else if (normalizedQuesito.includes("cnpj")) {
           check = { ok: fields.cnpj.length === 14, partial: false, value: fields.cnpj ? formatCnpj(fields.cnpj) : "Nao encontrado" };
         } else if (hasAnyTerm(normalizedQuesito, ["razao social", "nome empresarial", "empresa"])) {
           check = { ok: Boolean(fields.company || official?.razao_social), partial: false, value: fields.company || official?.razao_social || "Nao encontrada" };
-        } else if (normalizedQuesito.includes("cnae")) {
+        } else if (normalizedQuesito.includes("cnae") || hasAnyTerm(normalizedQuesito, ["classificacao nacional de atividade", "atividade da empresa"])) {
           check = { ok: Boolean(fields.cnae || official?.cnae_fiscal), partial: false, value: fields.cnae ? formatCnaeSubclass(fields.cnae) : (official?.cnae_fiscal ? formatCnaeSubclass(String(official.cnae_fiscal)) : "Nao encontrado") };
         } else if (hasAnyTerm(normalizedQuesito, ["grau de risco", "risco nr", "nr 4", "nr04"])) {
           check = { ok: Boolean(fields.calculatedRisk), partial: Boolean(fields.declaredRisk && !fields.calculatedRisk), value: fields.calculatedRisk ? `Grau ${fields.calculatedRisk.risk} - ${fields.calculatedRisk.description}` : (fields.declaredRisk ? `Grau declarado ${fields.declaredRisk}, sem calculo pela NR 4` : "Nao calculado") };
@@ -997,11 +1067,31 @@ Quesitos do Reclamante</textarea>
         </div>
         <div class="details">
           <div class="detail">
+            <b>Numero do processo</b>
+            <span>${escapeHtml(fields.process.processNumber || "Nao encontrado")}</span>
+          </div>
+          <div class="detail">
+            <b>Regiao e vara da justica</b>
+            <span>${escapeHtml([fields.process.region, fields.process.court].filter(Boolean).join(" - ") || "Nao encontrado")}</span>
+          </div>
+          <div class="detail">
+            <b>Nome do Reclamante</b>
+            <span>${escapeHtml(fields.process.claimant || "Nao encontrado")}</span>
+          </div>
+          <div class="detail">
+            <b>Nome da Reclamada</b>
+            <span>${escapeHtml(fields.process.defendant || official?.razao_social || fields.company || "Nao encontrada")}</span>
+          </div>
+          <div class="detail">
+            <b>Funcao do reclamante</b>
+            <span>${escapeHtml(fields.process.claimantRole || "Nao encontrada")}</span>
+          </div>
+          <div class="detail">
             <b>CNPJ identificado</b>
             <span>${fields.cnpj ? escapeHtml(formatCnpj(fields.cnpj)) : "Nao encontrado"}</span>
           </div>
           <div class="detail">
-            <b>CNAE usado</b>
+            <b>Classificacao Nacional de atividade</b>
             <span>${sourceCnae ? escapeHtml(formatCnaeSubclass(sourceCnae)) : "Nao encontrado"}</span>
           </div>
           <div class="detail">
@@ -1013,7 +1103,7 @@ Quesitos do Reclamante</textarea>
             <span>${fields.declaredRisk ? `Grau ${escapeHtml(fields.declaredRisk)}` : "Nao informado"}</span>
           </div>
           <div class="detail full">
-            <b>Dados cruzados</b>
+            <b>Dados cruzados da empresa</b>
             <span>${escapeHtml(officialLines.join(" | ") || "Sem dados oficiais cruzados. Informe um CNPJ valido no documento para enriquecer a analise.")}</span>
           </div>
         </div>

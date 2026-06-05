@@ -915,7 +915,8 @@ Quesitos do Juizo</textarea>
 
     function isQuesitoHeading(line) {
       const normalizedLine = normalizeText(line);
-      return normalizedLine.includes("quesito")
+      return isNumberedQuesitoPartyHeading(line)
+        || normalizedLine.includes("quesito")
         && (normalizedLine.includes("juizo")
           || normalizedLine.includes("reclamada")
           || normalizedLine.includes("reclamante")
@@ -923,6 +924,18 @@ Quesitos do Juizo</textarea>
           || normalizedLine.includes("requerente")
           || normalizedLine.includes("empresa")
           || normalizedLine.includes("reclamado"));
+    }
+
+    function isNumberedQuesitoPartyHeading(line) {
+      const normalizedLine = normalizeText(line).trim();
+      return /^\d+(?:\.\d+)*\s*[-.)]?\s*(reclamante|reclamada|reclamado|quesitos?\s+do\s+juizo|quesitos?\s+do\s+juiz)\b/.test(normalizedLine);
+    }
+
+    function isTargetQuesitoHeading(line, target) {
+      const normalizedLine = normalizeText(line);
+      const mentionsTarget = target.terms.some(term => normalizedLine.includes(term));
+      if (!mentionsTarget) return false;
+      return normalizedLine.includes("quesito") || isNumberedQuesitoPartyHeading(line);
     }
 
     function getQuesitoTarget(quesito) {
@@ -954,13 +967,12 @@ Quesitos do Juizo</textarea>
       const lines = String(text || "").split(/\r?\n/);
       for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index].trim();
-        const normalizedLine = normalizeText(line);
-        const isTargetLine = normalizedLine.includes("quesito") && target.terms.some(term => normalizedLine.includes(term));
-        if (!isTargetLine) continue;
+        if (!isTargetQuesitoHeading(line, target)) continue;
 
         const sectionLines = [];
         const sameLineContent = line
-          .replace(/^\s*(?:\d+[\).\-\s]*)?quesitos?\s*(?:do|da|de|dos|das)?\s*(?:juizo|juiz|reclamada|reclamado|reclamante|autor|requerente|empresa)?\s*[:\-\u2013]?\s*/i, "")
+          .replace(/^\s*(?:\d+(?:\.\d+)*\s*[-.)]?\s*)?quesitos?\s*(?:do|da|de|dos|das)?\s*(?:juizo|juiz|reclamada|reclamado|reclamante|autor|requerente|empresa)?\s*[:\-\u2013]?\s*/i, "")
+          .replace(/^\s*\d+(?:\.\d+)*\s*[-.)]?\s*(?:reclamante|reclamada|reclamado)\s*(?:\([^)]*\))?\s*[:\-\u2013]?\s*/i, "")
           .trim();
         if (sameLineContent) sectionLines.push(sameLineContent);
 
@@ -973,10 +985,11 @@ Quesitos do Juizo</textarea>
         }
 
         const value = sectionLines.join(" ").replace(/\s+/g, " ").trim();
+        const didNotPresent = normalizeText(value).includes("nao apresentou quesitos");
         return {
-          ok: true,
+          ok: !didNotPresent,
           partial: false,
-          value: value || "Secao localizada, mas sem texto extraido logo abaixo"
+          value: didNotPresent ? "Nao apresentou quesitos" : (value || "Secao localizada, mas sem texto extraido logo abaixo")
         };
       }
 

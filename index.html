@@ -821,6 +821,14 @@ Quesitos do Juizo</textarea>
         .trim();
     }
 
+    function cleanClaimantRole(value) {
+      return String(value || "")
+        .replace(/\s+/g, " ")
+        .replace(/\s+(?:Respons[aÃ¡]vel|pelo\s+Pedido|Detalhe\s+do\s+cart[aÃ£]o|Numero|N[uÃº]mero|Emissor|Status|Valor|CPF\/CNPJ|Utiliza[cÃ§][aÃ£]o|Data|Assinatura)\b.*$/i, "")
+        .replace(/[;,.:\-\u2013]+$/g, "")
+        .trim();
+    }
+
     function getFirstPageText(text) {
       const fullText = String(text || "");
       const explicitFirstPage = fullText.split("\f")[0];
@@ -870,7 +878,7 @@ Quesitos do Juizo</textarea>
         court: court.replace(/\s{2,}/g, " ").trim(),
         claimant,
         defendant,
-        claimantRole: claimantRole.replace(/[;,.:\-\u2013]+$/g, "").trim()
+        claimantRole: cleanClaimantRole(claimantRole)
       };
     }
 

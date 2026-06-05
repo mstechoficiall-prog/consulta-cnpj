@@ -389,12 +389,6 @@
       border: 1px solid #f0a7ad;
     }
 
-    .check-list {
-      display: grid;
-      gap: 1px;
-      background: var(--line);
-    }
-
     .check-item {
       display: grid;
       grid-template-columns: 112px 1fr;
@@ -581,19 +575,7 @@
                 </div>
                 <button id="analyzeButton" type="submit">Analisar documento</button>
               </div>
-              <label for="requestInput" style="margin-top: 12px;">Quesitos que deseja localizar</label>
-              <textarea id="requestInput" placeholder="Informe um quesito por linha.">Numero do processo
-Regiao e vara da justica
-Nome do Reclamante
-Nome da Reclamada
-CNPJ do Reu/Reclamada
-Grau de Risco
-Classificacao Nacional de atividade da empresa
-Funcao do reclamante
-Quesitos do Reclamante
-Quesitos da Reclamada
-Quesitos do Juizo</textarea>
-              <p class="hint">A analise procura as secoes de quesitos no documento. Quando encontrar, mostra o conteudo identificado; quando nao encontrar, informa que nao apresentou quesitos.</p>
+              <p class="hint">A analise extrai somente as informacoes principais do processo e da empresa reclamada.</p>
             </form>
           </div>
           <div id="message" aria-live="polite"></div>
@@ -632,7 +614,6 @@ Quesitos do Juizo</textarea>
     const searchButton = document.getElementById("searchButton");
     const documentForm = document.getElementById("documentForm");
     const documentInput = document.getElementById("documentInput");
-    const requestInput = document.getElementById("requestInput");
     const analyzeButton = document.getElementById("analyzeButton");
 
     function onlyDigits(value) {
@@ -1174,7 +1155,7 @@ Quesitos do Juizo</textarea>
       });
     }
 
-    function renderAnalysis({ file, text, fields, official, checks, warning }) {
+    function renderAnalysis({ file, text, fields, official, warning }) {
       const sourceCnae = official?.cnae_fiscal ? String(official.cnae_fiscal) : fields.cnae;
 
       analysisResult.innerHTML = `
@@ -1216,14 +1197,6 @@ Quesitos do Juizo</textarea>
             <b>Grau de risco</b>
             <span>${fields.calculatedRisk ? `Grau ${fields.calculatedRisk.risk}` : "Nao calculado"}</span>
           </div>
-        </div>
-        <div class="check-list">
-          ${checks.map(item => `
-            <div class="check-item">
-              <b>${escapeHtml(item.status)}</b>
-              <span><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</span>
-            </div>
-          `).join("")}
         </div>
       `;
       analysisResult.hidden = false;
@@ -1317,8 +1290,7 @@ Quesitos do Juizo</textarea>
 
         const cnaeForRisk = official?.cnae_fiscal ? String(official.cnae_fiscal) : fields.cnae;
         fields.calculatedRisk = cnaeForRisk ? findRiskByCnae(cnaeForRisk) : null;
-        const checks = buildRequestedChecks(requestInput.value, fields, official, text);
-        renderAnalysis({ file, text, fields, official, checks, warning });
+        renderAnalysis({ file, text, fields, official, warning });
       } catch (error) {
         analysisResult.hidden = true;
         setMessage(error.message || "Nao foi possivel analisar o documento.");

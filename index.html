@@ -987,7 +987,74 @@ Quesitos do Juizo</textarea>
       };
     }
 
-    function extractQuesitoSection(text, quesito) {
+    function compactName(value) {
+      return normalizeText(value).replace(/[^a-z0-9]+/g, " ").trim();
+    }
+
+    function inferQuesitoAuthor(context, fields) {
+      const normalizedContext = normalizeText(context);
+      const claimantName = compactName(fields?.process?.claimant || "");
+      const defendantName = compactName(fields?.process?.defendant || fields?.company || "");
+      if (defendantName && normalizedContext.includes(defendantName)) return "reclamada";
+      if (claimantName && normalizedContext.includes(claimantName)) return "reclamante";
+      if (/(reclamad[ao]|empresa|requerid[ao])/.test(normalizedContext)) return "reclamada";
+      if (/(reclamante|autor|requerente)/.test(normalizedContext)) return "reclamante";
+      return "";
+    }
+
+    function findQuesitosByPresenter(text, target, fields) {
+      if (target.label === "Quesitos do Juizo") {
+        return { ok: false, partial: false, value: "Nao apresentou quesitos" };
+      }
+
+      const fullText = String(text || "");
+      const normalizedText = normalizeText(fullText);
+      const presentationPatterns = ["apresentar quesitos", "apresenta quesitos", "apresentam quesitos", "quesitos para serem respondidos", "quesitos a serem respondidos"];
+
+      for (const pattern of presentationPatterns) {
+        let searchFrom = 0;
+        while (searchFrom < normalizedText.length) {
+          const position = normalizedText.indexOf(pattern, searchFrom);
+          if (position < 0) break;
+
+          const contextStart = Math.max(0, position - 900);
+          const contextEnd = Math.min(fullText.length, position + 250);
+          const context = fullText.slice(contextStart, contextEnd);
+          const author = inferQuesitoAuthor(context, fields);
+          const wantsDefendant = target.label === "Quesitos da Reclamada";
+          const wantsClaimant = target.label === "Quesitos do Reclamante";
+          if ((wantsDefendant && author === "reclamada") || (wantsClaimant && author === "reclamante")) {
+            const afterPresentation = fullText.slice(contextStart);
+            const lines = afterPresentation.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+            const sectionLines = [];
+            const firstQuestionIndex = lines.findIndex(line => /^(\d+[\).\-\s]+|[a-z][\).\-\s]+|\?)|.*\?/.test(line));
+            const candidateLines = firstQuestionIndex >= 0 ? lines.slice(firstQuestionIndex) : lines.slice(1);
+            for (const line of candidateLines) {
+              if (isQuesitoHeading(line)) break;
+              if (/^(respostas?|conclus[aÃ£]o|manifest[aÃ£]o|observa[cÃ§][aÃ£]o|anexos?)\b/i.test(line)) break;
+              sectionLines.push(line);
+              if (sectionLines.join(" ").length > 1800) break;
+            }
+
+            return {
+              ok: true,
+              partial: false,
+              value: (sectionLines.join(" ").replace(/\s+/g, " ").trim() || context.replace(/\s+/g, " ").trim())
+            };
+          }
+
+          searchFrom = position + pattern.length;
+        }
+      }
+
+      return {
+        ok: false,
+        partial: false,
+        value: "Nao apresentou quesitos"
+      };
+    }
+
+    function extractQuesitoSection(text, quesito, fields) {
       const target = getQuesitoTarget(quesito);
       if (!target) return null;
 
@@ -1000,9 +1067,18 @@ Quesitos do Juizo</textarea>
             value: `Localizado apos a ata de audiencia: ${resultAfterAta.value}`
           };
         }
+        const presentedAfterAta = findQuesitosByPresenter(afterAta, target, fields);
+        if (presentedAfterAta.ok) {
+          return {
+            ...presentedAfterAta,
+            value: `Localizado apos a ata de audiencia: ${presentedAfterAta.value}`
+          };
+        }
       }
 
-      return findQuesitoSectionInText(text, target);
+      const directSection = findQuesitoSectionInText(text, target);
+      if (directSection.ok) return directSection;
+      return findQuesitosByPresenter(text, target, fields);
     }
 
     function buildRequestedChecks(requestText, fields, official, text) {
@@ -1010,7 +1086,7 @@ Quesitos do Juizo</textarea>
         const normalizedQuesito = normalizeText(quesito);
         let check;
 
-        const legalQuesitos = normalizedQuesito.includes("quesito") ? extractQuesitoSection(text, quesito) : null;
+        const legalQuesitos = normalizedQuesito.includes("quesito") ? extractQuesitoSection(text, quesito, fields) : null;
         if (legalQuesitos) {
           check = legalQuesitos;
         } else if (hasAnyTerm(normalizedQuesito, ["numero do processo", "processo"])) {

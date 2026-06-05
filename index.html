@@ -586,6 +586,7 @@
 Regiao e vara da justica
 Nome do Reclamante
 Nome da Reclamada
+CNPJ do Reu/Reclamada
 Grau de Risco
 Classificacao Nacional de atividade da empresa
 Funcao do reclamante
@@ -796,6 +797,22 @@ Quesitos do Juizo</textarea>
       return "";
     }
 
+    function findCnpjNearLabels(text, labels) {
+      const lines = String(text || "").split(/\r?\n/);
+      for (let index = 0; index < lines.length; index += 1) {
+        const normalizedLine = normalizeText(lines[index]);
+        if (!labels.some(label => normalizedLine.includes(label))) continue;
+
+        const block = lines.slice(index, index + 5).join(" ");
+        const cnpj = extractFirstMatch(block, [
+          /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/,
+          /cnpj\s*[:\-]?\s*([\d.\-/]{14,18})/i
+        ]);
+        if (onlyDigits(cnpj).length === 14) return onlyDigits(cnpj);
+      }
+      return "";
+    }
+
     function cleanExtractedName(value) {
       return String(value || "")
         .replace(/\s{2,}/g, " ")
@@ -853,6 +870,7 @@ Quesitos do Juizo</textarea>
         /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/,
         /cnpj\s*[:\-]?\s*([\d.\-/]{14,18})/i
       ]);
+      const defendantCnpj = findCnpjNearLabels(text, ["reclamada", "reclamado", "reu", "parte re"]);
       const cnae = extractFirstMatch(text, [
         /cnae(?:\s+principal)?\s*[:\-]?\s*([\d.\-/]{5,10})/i,
         /\b\d{4}-\d\/\d{2}\b/,
@@ -868,7 +886,8 @@ Quesitos do Juizo</textarea>
         /risco\s*[:\-]?\s*([1-4])\b/i
       ]);
       return {
-        cnpj: onlyDigits(cnpj),
+        cnpj: defendantCnpj || onlyDigits(cnpj),
+        defendantCnpj: defendantCnpj || onlyDigits(cnpj),
         cnae: onlyDigits(cnae),
         company,
         declaredRisk: risk,
@@ -1163,6 +1182,10 @@ Quesitos do Juizo</textarea>
           <div class="detail">
             <b>Nome da Reclamada</b>
             <span>${escapeHtml(fields.process.defendant || official?.razao_social || fields.company || "Nao encontrada")}</span>
+          </div>
+          <div class="detail">
+            <b>CNPJ do Reu/Reclamada</b>
+            <span>${fields.defendantCnpj ? escapeHtml(formatCnpj(fields.defendantCnpj)) : "Nao encontrado"}</span>
           </div>
           <div class="detail">
             <b>Funcao do reclamante</b>

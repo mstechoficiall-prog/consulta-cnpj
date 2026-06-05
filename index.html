@@ -879,10 +879,18 @@ Quesitos do Reclamante</textarea>
       return null;
     }
 
-    function extractQuesitoSection(text, quesito) {
-      const target = getQuesitoTarget(quesito);
-      if (!target) return null;
+    function getTextAfterAtaAudiencia(text) {
+      const fullText = String(text || "");
+      const normalizedText = normalizeText(fullText);
+      const markers = ["ata de audiencia", "ata da audiencia", "termo de audiencia", "audiencia de conciliacao", "audiencia una"];
+      const positions = markers
+        .map(marker => normalizedText.lastIndexOf(marker))
+        .filter(position => position >= 0);
+      if (!positions.length) return "";
+      return fullText.slice(Math.max(...positions));
+    }
 
+    function findQuesitoSectionInText(text, target) {
       const lines = String(text || "").split(/\r?\n/);
       for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index].trim();
@@ -917,6 +925,24 @@ Quesitos do Reclamante</textarea>
         partial: false,
         value: "Nao apresentou quesitos"
       };
+    }
+
+    function extractQuesitoSection(text, quesito) {
+      const target = getQuesitoTarget(quesito);
+      if (!target) return null;
+
+      const afterAta = getTextAfterAtaAudiencia(text);
+      if (afterAta) {
+        const resultAfterAta = findQuesitoSectionInText(afterAta, target);
+        if (resultAfterAta.ok) {
+          return {
+            ...resultAfterAta,
+            value: `Localizado apos a ata de audiencia: ${resultAfterAta.value}`
+          };
+        }
+      }
+
+      return findQuesitoSectionInText(text, target);
     }
 
     function buildRequestedChecks(requestText, fields, official, text) {
